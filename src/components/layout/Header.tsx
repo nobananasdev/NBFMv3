@@ -5,12 +5,28 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Auth } from '../auth/Auth'
 
 export function Header() {
-  const { user, getUserDisplayName, signOut } = useAuth()
+  const { user, getUserDisplayName, signOut, resetUserData, isResetting } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
 
   const handleSignOut = async () => {
     await signOut()
+  }
+
+  const handleReset = async () => {
+    if (confirm('Are you sure you want to reset all your data? This will delete all watchlist and rated shows and cannot be undone.')) {
+      console.log('🔄 [UI] Starting reset process...')
+      const result = await resetUserData()
+      if (result.error) {
+        console.error('❌ [UI] Reset failed:', result.error)
+        alert('Reset failed. Please check the console for details.')
+      } else {
+        console.log('✅ [UI] Reset completed successfully')
+        alert('Your data has been reset successfully!')
+        // Force page reload to ensure all components refresh
+        window.location.reload()
+      }
+    }
   }
 
   const openSignIn = () => {
@@ -37,6 +53,13 @@ export function Header() {
                 <span className="text-sm text-gray-700">
                   Welcome, {getUserDisplayName()}
                 </span>
+                <button
+                  onClick={handleReset}
+                  disabled={isResetting}
+                  className="btn bg-red-100 hover:bg-red-200 text-red-700 text-sm px-3 py-1 border border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResetting ? 'Resetting...' : 'Reset Data'}
+                </button>
                 <button
                   onClick={handleSignOut}
                   className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 border border-gray-300"

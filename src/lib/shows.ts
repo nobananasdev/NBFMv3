@@ -20,12 +20,11 @@ export async function fetchShows(options: {
   sortBy?: SortOption
 }): Promise<{ shows: ShowWithGenres[], error: any }> {
   try {
+    console.log('🔍 [fetchShows] Fetching shows with options:', options)
+    
     // Direct REST API call to bypass problematic Supabase client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    // Fetch all fields the UI needs for proper show cards
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,title,show_in_discovery,tmdb_id,original_title,first_air_date,last_air_date,status,imdb_rating,imdb_vote_count,tmdb_rating,tmdb_vote_count,our_score,overview,our_description,poster_path,poster_url,poster_thumb_url,genre_ids,trailer_key,season_count,episode_count,show_type,streaming_info,next_season_date,created_at,updated_at,tmdb_synced_at,needs_sync,is_hidden,is_trash,main_cast,creators,origin_country,original_language&limit=${options.limit || 20}`
     
     const headers = {
       'apikey': supabaseKey,
@@ -34,6 +33,28 @@ export async function fetchShows(options: {
       'Prefer': 'return=representation'
     }
 
+    // Step 1: Get user's show IDs if we need to exclude them
+    let userShowIds: string[] = []
+    if (options.excludeUserShows && options.userId) {
+      console.log('🔍 [fetchShows] Fetching user shows to exclude...')
+      const userShowsUrl = `${supabaseUrl}/rest/v1/user_shows?select=imdb_id&user_id=eq.${options.userId}`
+      
+      try {
+        const userShowsResponse = await fetch(userShowsUrl, { method: 'GET', headers })
+        if (userShowsResponse.ok) {
+          const userShows = await userShowsResponse.json()
+          userShowIds = userShows.map((us: any) => us.imdb_id)
+          console.log('🔍 [fetchShows] Found user shows to exclude:', userShowIds.length)
+        }
+      } catch (userShowsError) {
+        console.error('⚠️ [fetchShows] Failed to fetch user shows, continuing without exclusion:', userShowsError)
+      }
+    }
+    
+    // Step 2: Fetch all shows
+    console.log('🔍 [fetchShows] Fetching all shows...')
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,title,show_in_discovery,tmdb_id,original_title,first_air_date,last_air_date,status,imdb_rating,imdb_vote_count,tmdb_rating,tmdb_vote_count,our_score,overview,our_description,poster_path,poster_url,poster_thumb_url,genre_ids,trailer_key,season_count,episode_count,show_type,streaming_info,next_season_date,created_at,updated_at,tmdb_synced_at,needs_sync,is_hidden,is_trash,main_cast,creators,origin_country,original_language&limit=${(options.limit || 20) + userShowIds.length}`
+    
     let shows, error
     try {
       const response = await fetch(url, {
@@ -60,8 +81,29 @@ export async function fetchShows(options: {
       return { shows: [], error }
     }
     
+    // Step 3: Filter out user shows if needed
+    let filteredShows = shows || []
+    if (options.excludeUserShows && userShowIds.length > 0) {
+      const beforeCount = filteredShows.length
+      filteredShows = filteredShows.filter((show: any) => !userShowIds.includes(show.imdb_id))
+      console.log(`🔍 [fetchShows] Filtered out user shows: ${beforeCount} -> ${filteredShows.length}`)
+    }
+    
+    // Step 4: Apply discovery filtering
+    if (options.showInDiscovery) {
+      filteredShows = filteredShows.filter((show: any) => show.show_in_discovery === true)
+      console.log(`🔍 [fetchShows] After discovery filter: ${filteredShows.length} shows`)
+    }
+    
+    // Step 5: Apply limit after filtering
+    if (options.limit) {
+      filteredShows = filteredShows.slice(options.offset || 0, (options.offset || 0) + options.limit)
+    }
+    
+    console.log(`🔍 [fetchShows] Final result: ${filteredShows.length} shows`)
+    
     // Clean up the shows data with proper fallbacks
-    const cleanedShows = (shows || []).map((show: any) => ({
+    const cleanedShows = filteredShows.map((show: any) => ({
       ...show,
       // Add required fields as fallbacks
       tmdb_id: show.tmdb_id || 0,

@@ -160,15 +160,42 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   }, [fetchShowsData])
 
   const handleShowAction = useCallback(async (show: ShowWithGenres, status: ShowStatus) => {
-    // Remove the show from the current list
-    setShows(prev => prev.filter(s => s.imdb_id !== show.imdb_id))
+    console.log('🔄 [useShows] handleShowAction called for:', show.title, 'status:', status, 'view:', view)
     
-    // Refresh navigation counters
-    await refreshCounters()
+    if (!user) {
+      console.log('❌ [useShows] No user, cannot update show status')
+      return
+    }
     
-    // For discover view, we don't need to do anything else
-    // For other views, the show will be moved to the appropriate section
-  }, [refreshCounters])
+    try {
+      // Remove show from local state immediately for smooth UX
+      console.log('🔄 [useShows] Removing show locally immediately')
+      setShows(prev => prev.filter(s => s.imdb_id !== show.imdb_id))
+      
+      // Import and call the database update function
+      const { updateUserShowStatus } = await import('@/lib/shows')
+      
+      console.log('🔄 [useShows] Updating database for:', show.title)
+      const result = await updateUserShowStatus(user.id, show.imdb_id, status)
+      
+      if (result.error) {
+        console.error('❌ [useShows] Database update failed:', result.error)
+        return
+      }
+      
+      console.log('✅ [useShows] Database updated successfully for:', show.title)
+      
+      // Wait a bit then refresh counters
+      setTimeout(async () => {
+        console.log('🔄 [useShows] Delayed counter refresh')
+        await refreshCounters()
+      }, 1000)
+      
+      console.log('✅ [useShows] handleShowAction completed for:', show.title)
+    } catch (error) {
+      console.error('❌ [useShows] Error in handleShowAction:', error)
+    }
+  }, [user, view, refreshCounters])
 
   // Auto-fetch on mount and when dependencies change
   useEffect(() => {
@@ -178,9 +205,10 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     }
   }, [view, user?.id, autoFetch, sortBy])
 
-  // Refresh data when refreshTrigger changes (for user-specific views)
+  // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
   useEffect(() => {
-    if (user && view !== 'discover' && refreshTrigger > 0) {
+    if (user && refreshTrigger > 0 && view !== 'discover') {
+      console.log(`🔄 [useShows] Refreshing ${view} view due to trigger:`, refreshTrigger)
       setOffset(0)
       fetchShowsData(true)
     }

@@ -26,17 +26,8 @@ export default function ShowsList({
   hiddenActions = [],
   showActions = true
 }: ShowsListProps) {
-  const [displayedShows, setDisplayedShows] = useState<ShowWithGenres[]>(shows)
-
-  useEffect(() => {
-    setDisplayedShows(shows)
-  }, [shows])
-
   const handleShowAction = (show: ShowWithGenres, status: ShowStatus) => {
-    // Remove the show from the displayed list
-    setDisplayedShows(prev => prev.filter(s => s.imdb_id !== show.imdb_id))
-    
-    // Call the parent callback
+    // Just call the parent callback - no animations, no local state
     onShowAction?.(show, status)
   }
 
@@ -113,7 +104,7 @@ export default function ShowsList({
     )
   }
 
-  if (displayedShows.length === 0) {
+  if (shows.length === 0) {
     return (
       <div className={`${className}`}>
         <div className="card p-6 text-center">
@@ -134,7 +125,7 @@ export default function ShowsList({
   return (
     <div className={`${className}`}>
       <div className="grid grid-cols-1 gap-6">
-        {displayedShows.map((show) => (
+        {shows.map((show) => (
           <ShowCard
             key={show.imdb_id}
             show={show}
