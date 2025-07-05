@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-background text-gray-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card shadow-card rounded-card transition-all duration-200;
+  }
+  
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+  
+  .btn {
+    @apply rounded-button transition-all duration-200;
+  }
+}
