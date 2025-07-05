@@ -2,6 +2,23 @@
 
 A TV series recommendation web application built with Next.js 14+ and Supabase.
 
+## 🚨 IMPORTANT: Git Automation Active
+
+**This project has automated git commit tools set up!**
+
+- **Before coding**: Run `source scripts/git-helpers.sh`
+- **Quick commits**: Use `auto_commit` or `quick_commit <type> <message>`
+- **Full guide**: See [`GIT_AUTOMATION_GUIDE.md`](GIT_AUTOMATION_GUIDE.md)
+- **Pre-commit hooks active**: Checks files, secrets, linting before each commit
+
+**Available commands:**
+```bash
+source scripts/git-helpers.sh  # Load helpers first
+auto_commit                    # Smart auto-commit based on changes
+quick_commit feat "new thing"  # Conventional commit
+session_commit "work-name"     # Session checkpoint
+```
+
 ## Features
 
 - **Discovery Feed** - Browse curated TV shows with rating system
