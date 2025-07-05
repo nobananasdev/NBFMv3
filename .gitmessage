@@ -1,0 +1,16 @@
+# Commit message template
+# Type: Brief description (50 chars max)
+#
+# Detailed explanation (72 chars per line)
+# - What was changed and why
+# - Any breaking changes
+# - Related issues or tickets
+#
+# Types:
+# feat: new feature
+# fix: bug fix
+# docs: documentation
+# style: formatting, missing semicolons, etc
+# refactor: code change that neither fixes a bug nor adds a feature
+# test: adding missing tests
+# chore: maintain, deps, config
