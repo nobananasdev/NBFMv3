@@ -17,11 +17,11 @@ const clientConfig = typeof window === 'undefined' ? {
     detectSessionInUrl: true
   }
 } : {
-  // Browser-side: disable problematic session persistence
+  // Browser-side: enable URL detection but keep other optimizations
   auth: {
-    persistSession: false,      // Disable session persistence in browser
-    autoRefreshToken: false,    // Disable auto refresh to prevent hangs
-    detectSessionInUrl: false   // Disable URL session detection
+    persistSession: true,       // Enable session persistence for auth to work
+    autoRefreshToken: true,     // Enable auto refresh for session management
+    detectSessionInUrl: true    // ENABLE URL session detection for email confirmation!
   }
 }
 

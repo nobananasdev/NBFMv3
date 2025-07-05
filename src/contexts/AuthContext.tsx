@@ -28,7 +28,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        // Add timeout to getSession to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('getSession timeout')), 5000)
+        )
+        
+        const result = await Promise.race([sessionPromise, timeoutPromise])
+        const { data: { session }, error } = result
+        
+        if (error) {
+          console.error('Error getting session:', error)
+        }
+        
         setSession(session)
         setUser(session?.user ?? null)
         
@@ -37,6 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error getting session:', error)
+        
+        // If getSession fails, try to manually parse URL hash for auth tokens
+        if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+          try {
+            // Try to trigger auth state change by refreshing the session
+            await supabase.auth.refreshSession()
+          } catch (refreshError) {
+            console.error('Manual refresh failed:', refreshError)
+          }
+        }
       } finally {
         setLoading(false)
       }
