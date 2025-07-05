@@ -31,7 +31,7 @@ interface UseShowsReturn {
 
 export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSortBy }: UseShowsOptions): UseShowsReturn {
   const { user } = useAuth()
-  const { refreshCounters } = useNavigation()
+  const { refreshCounters, refreshTrigger } = useNavigation()
   const [shows, setShows] = useState<ShowWithGenres[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<any>(null)
@@ -177,6 +177,14 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       fetchShowsData(true)
     }
   }, [view, user?.id, autoFetch, sortBy])
+
+  // Refresh data when refreshTrigger changes (for user-specific views)
+  useEffect(() => {
+    if (user && view !== 'discover' && refreshTrigger > 0) {
+      setOffset(0)
+      fetchShowsData(true)
+    }
+  }, [refreshTrigger, user, view, fetchShowsData])
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {

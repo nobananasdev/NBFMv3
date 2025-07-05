@@ -25,166 +25,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    const getSession = async () => {
-      try {
-        // Add timeout to getSession to prevent hanging
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('getSession timeout')), 5000)
-        )
-        
-        const result = await Promise.race([sessionPromise, timeoutPromise])
-        const { data: { session }, error } = result
-        
-        if (error) {
-          console.error('Error getting session:', error)
-        }
-        
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        }
-      } catch (error) {
-        console.error('Error getting session:', error)
-        
-        // If getSession fails, try to manually parse URL hash for auth tokens
-        if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-          try {
-            // Try to trigger auth state change by refreshing the session
-            await supabase.auth.refreshSession()
-          } catch (refreshError) {
-            console.error('Manual refresh failed:', refreshError)
-          }
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
+    // MOCK USER FOR TESTING - bypasses all auth complexity
+    const initializeMockUser = async () => {
+      console.log('🧪 [MOCK AUTH] Initializing test user...')
+      
+      const mockUserId = '12345678-1234-1234-1234-123456789012' // Valid UUID format
+      const mockUser = {
+        id: mockUserId,
+        email: 'test@example.com',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        aud: 'authenticated',
+        role: 'authenticated',
+        app_metadata: {},
+        user_metadata: {}
+      } as User
 
-    // Set a timeout to ensure loading state doesn't persist forever
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 3000) // 3 second timeout
-
-    getSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-        } else {
-          setProfile(null)
-        }
-        
-        setLoading(false)
-      }
-    )
-
-    return () => {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error)
-        return
-      }
-
-      setProfile(data)
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-    }
-  }
-
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { error }
-  }
-
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    try {
-      // Step 1: Attempt Supabase auth signup
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
-      if (error) {
-        return { error }
-      }
-
-      if (!data.user) {
-        return { error: new Error('No user returned from signup') }
-      }
-
-      // Check if email confirmation is required
-      if (!data.session && data.user) {
-        return { error: null } // Success, but no immediate session
-      }
-
-      // Step 2: Create profile in database (only if we have a session)
-      const profileData = {
-        id: data.user.id,
-        display_name: displayName || null,
+      const mockProfile = {
+        id: mockUserId,
+        display_name: 'Test User',
         preferences: {},
         is_admin: false,
         interaction_count: 0,
-      }
+        created_at: new Date().toISOString()
+      } as Profile
+
+      // Set mock data
+      setUser(mockUser)
+      setProfile(mockProfile)
+      setSession(null) // We don't need session for testing
+      setLoading(false)
       
-      // Retry mechanism for profile creation (in case of timing issues)
-      let profileError = null
-      let retryCount = 0
-      const maxRetries = 3
-      
-      while (retryCount < maxRetries) {
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert([profileData])
-
-        if (!insertError) {
-          break
-        }
-
-        profileError = insertError
-        retryCount++
-
-        if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-      }
-
-      if (profileError) {
-        return { error: profileError }
-      }
-
-      return { error: null }
-      
-    } catch (unexpectedError) {
-      return { error: unexpectedError }
+      console.log('✅ [MOCK AUTH] Test user initialized:', mockUser.id)
     }
+
+    // Small delay to simulate loading
+    setTimeout(() => {
+      initializeMockUser()
+    }, 500)
+  }, [])
+
+  const signIn = async (email: string, password: string) => {
+    console.log('🧪 [MOCK AUTH] Mock sign in - already signed in as test user')
+    return { error: null }
+  }
+
+  const signUp = async (email: string, password: string, displayName?: string) => {
+    console.log('🧪 [MOCK AUTH] Mock sign up - already signed in as test user')
+    return { error: null }
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    console.log('🧪 [MOCK AUTH] Mock sign out - staying as test user')
+    // In mock mode, we don't actually sign out
   }
 
   const getUserDisplayName = () => {

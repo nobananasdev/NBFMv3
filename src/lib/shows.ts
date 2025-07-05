@@ -246,52 +246,106 @@ export async function updateUserShowStatus(
   status: ShowStatus
 ): Promise<{ error: any }> {
   try {
-    // First, try to update existing record
-    const { data: existingShow, error: fetchError } = await supabase
-      .from('user_shows')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('imdb_id', imdbId)
-      .single()
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error checking existing user show:', fetchError)
-      return { error: fetchError }
+    console.log('🔄 [updateUserShowStatus] Starting status update...', { userId, imdbId, status })
+    
+    // Use direct REST API instead of Supabase client to avoid hanging
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
     }
 
-    if (existingShow) {
+    // First, check if record exists with timeout
+    console.log('🔍 [updateUserShowStatus] Checking existing record...')
+    const checkUrl = `${supabaseUrl}/rest/v1/user_shows?select=id&user_id=eq.${userId}&imdb_id=eq.${imdbId}`
+    
+    const checkPromise = fetch(checkUrl, { method: 'GET', headers })
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Check timeout')), 10000)
+    )
+    
+    const checkResponse = await Promise.race([checkPromise, timeoutPromise])
+    
+    if (!checkResponse.ok) {
+      const errorText = await checkResponse.text()
+      console.error('❌ [updateUserShowStatus] Check failed:', errorText)
+      return { error: new Error(`Check failed: ${checkResponse.status}`) }
+    }
+    
+    const existingRecords = await checkResponse.json()
+    console.log('📋 [updateUserShowStatus] Existing records:', existingRecords)
+    
+    if (existingRecords && existingRecords.length > 0) {
       // Update existing record
-      const { error: updateError } = await supabase
-        .from('user_shows')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', existingShow.id)
-
-      if (updateError) {
-        console.error('Error updating user show:', updateError)
-        return { error: updateError }
+      console.log('🔄 [updateUserShowStatus] Updating existing record...')
+      const updateUrl = `${supabaseUrl}/rest/v1/user_shows?id=eq.${existingRecords[0].id}`
+      const updateData = {
+        status,
+        updated_at: new Date().toISOString()
       }
+      
+      const updatePromise = fetch(updateUrl, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(updateData)
+      })
+      
+      const updateTimeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Update timeout')), 10000)
+      )
+      
+      const updateResponse = await Promise.race([updatePromise, updateTimeoutPromise])
+      
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text()
+        console.error('❌ [updateUserShowStatus] Update failed:', errorText)
+        return { error: new Error(`Update failed: ${updateResponse.status}`) }
+      }
+      
+      console.log('✅ [updateUserShowStatus] Record updated successfully')
     } else {
       // Create new record
-      const { error: insertError } = await supabase
-        .from('user_shows')
-        .insert({
-          user_id: userId,
-          imdb_id: imdbId,
-          status
-        })
-
-      if (insertError) {
-        console.error('Error creating user show:', insertError)
-        return { error: insertError }
+      console.log('➕ [updateUserShowStatus] Creating new record...')
+      const insertUrl = `${supabaseUrl}/rest/v1/user_shows`
+      const insertData = {
+        user_id: userId,
+        imdb_id: imdbId,
+        status
       }
+      
+      const insertPromise = fetch(insertUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(insertData)
+      })
+      
+      const insertTimeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Insert timeout')), 10000)
+      )
+      
+      const insertResponse = await Promise.race([insertPromise, insertTimeoutPromise])
+      
+      if (!insertResponse.ok) {
+        const errorText = await insertResponse.text()
+        console.error('❌ [updateUserShowStatus] Insert failed:', errorText)
+        return { error: new Error(`Insert failed: ${insertResponse.status}`) }
+      }
+      
+      console.log('✅ [updateUserShowStatus] New record created successfully')
     }
 
     // Update user's interaction count
+    console.log('📊 [updateUserShowStatus] Updating interaction count...')
     await updateUserInteractionCount(userId)
 
+    console.log('🎉 [updateUserShowStatus] All operations completed successfully')
     return { error: null }
   } catch (error) {
-    console.error('Error in updateUserShowStatus:', error)
+    console.error('❌ [updateUserShowStatus] Error:', error)
     return { error }
   }
 }
@@ -301,29 +355,64 @@ export async function updateUserShowStatus(
  */
 async function updateUserInteractionCount(userId: string): Promise<void> {
   try {
-    const { data: profile, error: fetchError } = await supabase
-      .from('profiles')
-      .select('interaction_count')
-      .eq('id', userId)
-      .single()
+    console.log('📊 [updateUserInteractionCount] Starting interaction count update...')
+    
+    // Use direct REST API to avoid hanging
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
 
-    if (fetchError) {
-      console.error('Error fetching user profile:', fetchError)
+    // Get current count with timeout
+    const fetchUrl = `${supabaseUrl}/rest/v1/profiles?select=interaction_count&id=eq.${userId}`
+    
+    const fetchPromise = fetch(fetchUrl, { method: 'GET', headers })
+    const fetchTimeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Fetch profile timeout')), 5000)
+    )
+    
+    const fetchResponse = await Promise.race([fetchPromise, fetchTimeoutPromise])
+    
+    if (!fetchResponse.ok) {
+      console.error('❌ [updateUserInteractionCount] Fetch failed:', fetchResponse.status)
       return
     }
+    
+    const profiles = await fetchResponse.json()
+    const currentCount = profiles?.[0]?.interaction_count || 0
+    const newCount = currentCount + 1
+    
+    console.log('📊 [updateUserInteractionCount] Updating count from', currentCount, 'to', newCount)
 
-    const newCount = (profile?.interaction_count || 0) + 1
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ interaction_count: newCount })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('Error updating interaction count:', updateError)
+    // Update count with timeout
+    const updateUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`
+    const updateData = { interaction_count: newCount }
+    
+    const updatePromise = fetch(updateUrl, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(updateData)
+    })
+    
+    const updateTimeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Update profile timeout')), 5000)
+    )
+    
+    const updateResponse = await Promise.race([updatePromise, updateTimeoutPromise])
+    
+    if (!updateResponse.ok) {
+      console.error('❌ [updateUserInteractionCount] Update failed:', updateResponse.status)
+      return
     }
+    
+    console.log('✅ [updateUserInteractionCount] Interaction count updated successfully')
   } catch (error) {
-    console.error('Error updating interaction count:', error)
+    console.error('❌ [updateUserInteractionCount] Error:', error)
   }
 }
 
