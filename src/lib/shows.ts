@@ -186,7 +186,6 @@ export async function fetchUserShows(
       query = query.eq('status', status)
     }
 
-    // 🐛 DEBUG: Enhanced sorting with proper support for all options
     console.log(`🔍 [fetchUserShows] Applying sorting: ${options?.sortBy}`)
     switch (options?.sortBy) {
       case 'recently_added':
@@ -240,8 +239,6 @@ export async function fetchUserShows(
     
     // 🐛 FIX: Apply in-memory sorting for rating-based sorts
     if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating' || options?.sortBy === 'by_rating') {
-      console.log(`🔍 [fetchUserShows] Applying in-memory rating sort: ${options.sortBy}`)
-      
       shows = shows.sort((a, b) => {
         // For "best_rated", use ONLY our_score to match what's displayed
         const ratingA = options?.sortBy === 'best_rated'
