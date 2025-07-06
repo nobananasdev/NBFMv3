@@ -67,6 +67,22 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
 
+  // Get the best available rating
+  const getRating = () => {
+    if (show.imdb_rating && show.imdb_rating > 0) {
+      return { value: show.imdb_rating.toFixed(1), source: 'IMDb' }
+    }
+    if (show.tmdb_rating && show.tmdb_rating > 0) {
+      return { value: show.tmdb_rating.toFixed(1), source: 'TMDb' }
+    }
+    if (show.our_score && show.our_score > 0) {
+      return { value: show.our_score.toFixed(1), source: 'Our' }
+    }
+    return null
+  }
+
+  const rating = getRating()
+
   const handleAction = async (status: ShowStatus) => {
     if (!user) {
       // Show tooltip for unauthenticated users
@@ -127,7 +143,14 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
   }
 
   return (
-    <div className="card min-h-[320px] p-6">
+    <div className="card min-h-[320px] p-6 relative">
+      {/* Rating Badge - Top Right */}
+      {rating && (
+        <div className="absolute top-4 right-4 bg-yellow-400 text-black px-2 py-1 rounded-md text-sm font-bold shadow-sm">
+          ⭐ {rating.value}
+        </div>
+      )}
+      
       {/* Desktop: Side-by-side layout */}
       <div className="hidden md:flex gap-6">
         {/* Poster */}

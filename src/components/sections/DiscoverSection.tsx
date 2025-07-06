@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 
 const DISCOVER_SORT_OPTIONS = [
   { value: 'latest' as const, label: 'Latest Shows' },
-  { value: 'best_rated' as const, label: 'Best Rated' }
+  { value: 'rating' as const, label: 'By Rating' }
 ]
 
 export function DiscoverSection() {

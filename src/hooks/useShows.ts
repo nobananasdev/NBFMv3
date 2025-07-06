@@ -54,7 +54,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     }
   }
 
-  const fetchShowsData = useCallback(async (reset = false) => {
+  const fetchShowsData = useCallback(async (reset = false, overrideSortBy?: SortOption) => {
     if (loading) return
     
     setLoading(true)
@@ -64,6 +64,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       let result: { shows: ShowWithGenres[], error: any }
 
       const currentOffset = reset ? 0 : offset
+      const effectiveSortBy = overrideSortBy || sortBy
       const options = {
         limit,
         offset: currentOffset,
@@ -75,7 +76,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       if (view === 'discover') {
         result = await fetchShows({
           ...options,
-          sortBy,
+          sortBy: effectiveSortBy,
           showInDiscovery: true,
           excludeUserShows: !!user
         })
@@ -86,7 +87,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           setLoading(false)
           return
         }
-        result = await fetchUserShows(user.id, 'watchlist', { sortBy, limit, offset: currentOffset })
+        result = await fetchUserShows(user.id, 'watchlist', { sortBy: effectiveSortBy, limit, offset: currentOffset })
       } else if (view === 'loved_it') {
         if (!user) {
           setShows([])
@@ -94,7 +95,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           setLoading(false)
           return
         }
-        result = await fetchUserShows(user.id, 'loved_it', { sortBy, limit, offset: currentOffset })
+        result = await fetchUserShows(user.id, 'loved_it', { sortBy: effectiveSortBy, limit, offset: currentOffset })
       } else if (view === 'liked_it') {
         if (!user) {
           setShows([])
@@ -102,7 +103,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           setLoading(false)
           return
         }
-        result = await fetchUserShows(user.id, 'liked_it', { sortBy, limit, offset: currentOffset })
+        result = await fetchUserShows(user.id, 'liked_it', { sortBy: effectiveSortBy, limit, offset: currentOffset })
       } else if (view === 'all_rated') {
         if (!user) {
           setShows([])
@@ -110,7 +111,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           setLoading(false)
           return
         }
-        result = await fetchUserShows(user.id, 'all_rated', { sortBy, limit, offset: currentOffset })
+        result = await fetchUserShows(user.id, 'all_rated', { sortBy: effectiveSortBy, limit, offset: currentOffset })
       } else if (view === 'new_seasons') {
         if (!user) {
           setShows([])
@@ -218,8 +219,8 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   const handleSortChange = useCallback((newSort: SortOption) => {
     setSortBy(newSort)
     setOffset(0)
-    fetchShowsData(true)
-  }, [fetchShowsData])
+    fetchShowsData(true, newSort)
+  }, [fetchShowsData, sortBy])
 
   return {
     shows,
@@ -236,23 +237,23 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
 
 // Helper hook for specific views
 export function useDiscoverShows(limit?: number) {
-  return useShows({ view: 'discover', limit, sortBy: 'latest' })
+  return useShows({ view: 'discover', limit })
 }
 
 export function useWatchlistShows(limit?: number) {
-  return useShows({ view: 'watchlist', limit, sortBy: 'recently_added' })
+  return useShows({ view: 'watchlist', limit })
 }
 
 export function useLikedShows(limit?: number) {
-  return useShows({ view: 'liked_it', limit, sortBy: 'recently_added' })
+  return useShows({ view: 'liked_it', limit })
 }
 
 export function useLovedShows(limit?: number) {
-  return useShows({ view: 'loved_it', limit, sortBy: 'recently_added' })
+  return useShows({ view: 'loved_it', limit })
 }
 
 export function useAllRatedShows(limit?: number) {
-  return useShows({ view: 'all_rated', limit, sortBy: 'recently_added' })
+  return useShows({ view: 'all_rated', limit })
 }
 
 export function useNewSeasonsShows(limit?: number) {

@@ -95,7 +95,12 @@ export async function fetchShows(options: {
       console.log(`🔍 [fetchShows] After discovery filter: ${filteredShows.length} shows`)
     }
     
-    // Step 5: Apply limit after filtering
+    // Step 5: Apply sorting
+    if (options.sortBy && filteredShows.length > 0) {
+      filteredShows = applySortingToShows(filteredShows, options.sortBy)
+    }
+    
+    // Step 6: Apply limit after filtering and sorting
     if (options.limit) {
       filteredShows = filteredShows.slice(options.offset || 0, (options.offset || 0) + options.limit)
     }
@@ -163,6 +168,8 @@ export async function fetchUserShows(
   }
 ): Promise<{ shows: ShowWithGenres[], error: any }> {
   try {
+    console.log(`🔍 [fetchUserShows] Fetching user shows for ${userId}, status: ${status}, sortBy: ${options?.sortBy}`)
+    
     let query = supabase
       .from('user_shows')
       .select(`
@@ -178,17 +185,27 @@ export async function fetchUserShows(
       query = query.eq('status', status)
     }
 
-    // Apply sorting
+    // 🐛 DEBUG: Enhanced sorting with proper support for all options
+    console.log(`🔍 [fetchUserShows] Applying sorting: ${options?.sortBy}`)
     switch (options?.sortBy) {
       case 'recently_added':
         query = query.order('created_at', { ascending: false })
         break
       case 'best_rated':
-        query = query.order('updated_at', { ascending: false })
+        // 🐛 FIX: This should not sort by updated_at, we'll handle rating sorting in memory
+        query = query.order('created_at', { ascending: false })
         break
       case 'by_rating':
         // For grouped by rating, we'll sort by status first, then by created_at
         query = query.order('status', { ascending: false }).order('created_at', { ascending: false })
+        break
+      case 'latest':
+        // Sort by when the show was added to user's list
+        query = query.order('created_at', { ascending: false })
+        break
+      case 'rating':
+        // We'll handle rating sorting in memory since it's based on show data
+        query = query.order('created_at', { ascending: false })
         break
       default:
         query = query.order('created_at', { ascending: false })
@@ -210,11 +227,25 @@ export async function fetchUserShows(
       return { shows: [], error: userShowsError }
     }
 
-    const shows = userShows?.map(us => ({
+    let shows = userShows?.map(us => ({
       ...us.shows,
       user_status: us.status
     })).filter(Boolean) || []
+    
+    console.log(`🔍 [fetchUserShows] Retrieved ${shows.length} shows before in-memory sorting`)
+    
+    // 🐛 FIX: Apply in-memory sorting for rating-based sorts
+    if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating') {
+      console.log(`🔍 [fetchUserShows] Applying in-memory rating sort: ${options.sortBy}`)
+      shows = shows.sort((a, b) => {
+        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
+        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        return ratingB - ratingA
+      })
+    }
+    
     const showsWithGenres = await addGenreNames(shows)
+    console.log(`🔍 [fetchUserShows] Final result: ${showsWithGenres.length} shows`)
 
     return { shows: showsWithGenres, error: null }
   } catch (error) {
@@ -276,6 +307,52 @@ async function addGenreNames(shows: Show[]): Promise<ShowWithGenres[]> {
   } catch (error) {
     console.error('Error adding genre names:', error)
     return shows.map(show => ({ ...show, genre_names: [] }))
+  }
+}
+
+/**
+ * Apply sorting to shows array
+ */
+function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
+  switch (sortBy) {
+    case 'latest':
+      return shows.sort((a, b) => {
+        const dateA = new Date(a.first_air_date || a.created_at || '1900-01-01')
+        const dateB = new Date(b.first_air_date || b.created_at || '1900-01-01')
+        return dateB.getTime() - dateA.getTime()
+      })
+    
+    case 'rating':
+      return shows.sort((a, b) => {
+        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
+        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        return ratingB - ratingA
+      })
+    
+    case 'recently_added':
+      return shows.sort((a, b) => {
+        const dateA = new Date(a.created_at || '1900-01-01')
+        const dateB = new Date(b.created_at || '1900-01-01')
+        return dateB.getTime() - dateA.getTime()
+      })
+    
+    case 'best_rated':
+      return shows.sort((a, b) => {
+        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
+        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        return ratingB - ratingA
+      })
+    
+    case 'by_rating':
+      return shows.sort((a, b) => {
+        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
+        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        return ratingB - ratingA
+      })
+    
+    default:
+      console.log(`🔍 [applySortingToShows] Unknown sort option: ${sortBy}`)
+      return shows
   }
 }
 
