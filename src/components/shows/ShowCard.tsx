@@ -60,6 +60,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
     label: string
   } | null>(null)
 
+
   const posterUrl = getPosterUrl(show)
   const streamingProviders = filterStreamingProviders(show)
   const airDate = formatAirDate(show.first_air_date)
@@ -67,14 +68,8 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
 
-  // Get the best available rating
+  // Get only our_score rating
   const getRating = () => {
-    if (show.imdb_rating && show.imdb_rating > 0) {
-      return { value: show.imdb_rating.toFixed(1), source: 'IMDb' }
-    }
-    if (show.tmdb_rating && show.tmdb_rating > 0) {
-      return { value: show.tmdb_rating.toFixed(1), source: 'TMDb' }
-    }
     if (show.our_score && show.our_score > 0) {
       return { value: show.our_score.toFixed(1), source: 'Our' }
     }
@@ -248,20 +243,29 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
               {ACTION_BUTTONS
                 .filter(button => !hiddenActions.includes(button.status))
-                .map((button) => (
-                  <button
-                    key={button.status}
-                    onClick={() => handleAction(button.status)}
-                    disabled={isProcessing}
-                    className={`btn px-3 py-2 text-sm font-medium ${button.className} ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    title={!user ? 'Sign up to use this feature' : ''}
-                  >
-                    <span className="mr-1">{button.icon}</span>
-                    {button.label}
-                  </button>
-                ))}
+                .map((button) => {
+                  // Check if this button matches the user's rating
+                  const isUserRated = show.user_status === button.status
+                  const baseClassName = isUserRated
+                    ? `${button.className} ring-2 ring-white ring-opacity-50 shadow-lg`
+                    : `${button.className.replace('bg-', 'bg-gray-200 hover:bg-')} text-gray-700 hover:text-white`
+                  
+                  return (
+                    <button
+                      key={button.status}
+                      onClick={() => handleAction(button.status)}
+                      disabled={isProcessing}
+                      className={`btn px-3 py-2 text-sm font-medium ${baseClassName} ${
+                        isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      title={!user ? 'Sign up to use this feature' : isUserRated ? `You rated this: ${button.label}` : ''}
+                    >
+                      <span className="mr-1">{button.icon}</span>
+                      {button.label}
+                      {isUserRated && <span className="ml-1">✓</span>}
+                    </button>
+                  )
+                })}
             </div>
           )}
         </div>
@@ -362,20 +366,29 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
               {ACTION_BUTTONS
                 .filter(button => !hiddenActions.includes(button.status))
-                .map((button) => (
-                  <button
-                    key={button.status}
-                    onClick={() => handleAction(button.status)}
-                    disabled={isProcessing}
-                    className={`btn px-3 py-2 text-sm font-medium ${button.className} ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    title={!user ? 'Sign up to use this feature' : ''}
-                  >
-                    <span className="mr-1">{button.icon}</span>
-                    {button.label}
-                  </button>
-                ))}
+                .map((button) => {
+                  // Check if this button matches the user's rating
+                  const isUserRated = show.user_status === button.status
+                  const baseClassName = isUserRated
+                    ? `${button.className} ring-2 ring-white ring-opacity-50 shadow-lg`
+                    : `${button.className.replace('bg-', 'bg-gray-200 hover:bg-')} text-gray-700 hover:text-white`
+                  
+                  return (
+                    <button
+                      key={button.status}
+                      onClick={() => handleAction(button.status)}
+                      disabled={isProcessing}
+                      className={`btn px-3 py-2 text-sm font-medium ${baseClassName} ${
+                        isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      title={!user ? 'Sign up to use this feature' : isUserRated ? `You rated this: ${button.label}` : ''}
+                    >
+                      <span className="mr-1">{button.icon}</span>
+                      {button.label}
+                      {isUserRated && <span className="ml-1">✓</span>}
+                    </button>
+                  )
+                })}
             </div>
           )}
         </div>

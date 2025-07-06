@@ -65,13 +65,19 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
 
       const currentOffset = reset ? 0 : offset
       const effectiveSortBy = overrideSortBy || sortBy
+      
+      // For "by_rating" sort, we need all shows for proper grouping
+      const adjustedLimit = effectiveSortBy === 'by_rating' ? 1000 : limit
+      
       const options = {
-        limit,
+        limit: adjustedLimit,
         offset: currentOffset,
         showInDiscovery: view === 'discover',
         excludeUserShows: view === 'discover' && !!user,
         userId: user?.id
       }
+      
+      console.log('🔍 [useShows] Fetch options:', { view, effectiveSortBy, limit: adjustedLimit, offset: currentOffset })
 
       if (view === 'discover') {
         result = await fetchShows({

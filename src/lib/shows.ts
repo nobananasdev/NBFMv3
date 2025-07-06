@@ -180,7 +180,8 @@ export async function fetchUserShows(
 
     // Handle status filtering
     if (status === 'all_rated') {
-      query = query.in('status', ['liked_it', 'loved_it'])
+      // Include all rating statuses: liked_it, loved_it, and not_for_me
+      query = query.in('status', ['liked_it', 'loved_it', 'not_for_me'])
     } else {
       query = query.eq('status', status)
     }
@@ -189,15 +190,18 @@ export async function fetchUserShows(
     console.log(`🔍 [fetchUserShows] Applying sorting: ${options?.sortBy}`)
     switch (options?.sortBy) {
       case 'recently_added':
-        query = query.order('created_at', { ascending: false })
+        // Sort by when the status was last updated, not when first created
+        query = query.order('updated_at', { ascending: false })
         break
       case 'best_rated':
         // 🐛 FIX: This should not sort by updated_at, we'll handle rating sorting in memory
-        query = query.order('created_at', { ascending: false })
+        query = query.order('updated_at', { ascending: false })
         break
       case 'by_rating':
-        // For grouped by rating, we'll sort by status first, then by created_at
-        query = query.order('status', { ascending: false }).order('created_at', { ascending: false })
+        // For grouped by rating, we'll sort by status first, then by updated_at
+        // Also fetch more data since grouping needs all shows
+        query = query.order('status', { ascending: false }).order('updated_at', { ascending: false })
+        console.log('🔍 [fetchUserShows] by_rating sorting applied, will fetch more data')
         break
       case 'latest':
         // Sort by when the show was added to user's list
@@ -205,10 +209,10 @@ export async function fetchUserShows(
         break
       case 'rating':
         // We'll handle rating sorting in memory since it's based on show data
-        query = query.order('created_at', { ascending: false })
+        query = query.order('updated_at', { ascending: false })
         break
       default:
-        query = query.order('created_at', { ascending: false })
+        query = query.order('updated_at', { ascending: false })
         break
     }
 
@@ -235,11 +239,16 @@ export async function fetchUserShows(
     console.log(`🔍 [fetchUserShows] Retrieved ${shows.length} shows before in-memory sorting`)
     
     // 🐛 FIX: Apply in-memory sorting for rating-based sorts
-    if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating') {
+    if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating' || options?.sortBy === 'by_rating') {
       console.log(`🔍 [fetchUserShows] Applying in-memory rating sort: ${options.sortBy}`)
       shows = shows.sort((a, b) => {
-        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
-        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        // For "by_rating", prioritize our_score, then fallback to other ratings
+        const ratingA = options?.sortBy === 'by_rating'
+          ? (a.our_score || a.imdb_rating || a.tmdb_rating || 0)
+          : (a.imdb_rating || a.tmdb_rating || a.our_score || 0)
+        const ratingB = options?.sortBy === 'by_rating'
+          ? (b.our_score || b.imdb_rating || b.tmdb_rating || 0)
+          : (b.imdb_rating || b.tmdb_rating || b.our_score || 0)
         return ratingB - ratingA
       })
     }
@@ -324,8 +333,8 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'rating':
       return shows.sort((a, b) => {
-        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
-        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        const ratingA = a.our_score || a.imdb_rating || a.tmdb_rating || 0
+        const ratingB = b.our_score || b.imdb_rating || b.tmdb_rating || 0
         return ratingB - ratingA
       })
     
@@ -338,8 +347,8 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'best_rated':
       return shows.sort((a, b) => {
-        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
-        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        const ratingA = a.our_score || a.imdb_rating || a.tmdb_rating || 0
+        const ratingB = b.our_score || b.imdb_rating || b.tmdb_rating || 0
         return ratingB - ratingA
       })
     
