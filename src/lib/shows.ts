@@ -241,14 +241,20 @@ export async function fetchUserShows(
     // 🐛 FIX: Apply in-memory sorting for rating-based sorts
     if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating' || options?.sortBy === 'by_rating') {
       console.log(`🔍 [fetchUserShows] Applying in-memory rating sort: ${options.sortBy}`)
+      
       shows = shows.sort((a, b) => {
-        // For "by_rating", prioritize our_score, then fallback to other ratings
-        const ratingA = options?.sortBy === 'by_rating'
+        // For "best_rated", use ONLY our_score to match what's displayed
+        const ratingA = options?.sortBy === 'best_rated'
+          ? (a.our_score || 0)
+          : options?.sortBy === 'by_rating'
           ? (a.our_score || a.imdb_rating || a.tmdb_rating || 0)
           : (a.imdb_rating || a.tmdb_rating || a.our_score || 0)
-        const ratingB = options?.sortBy === 'by_rating'
+        const ratingB = options?.sortBy === 'best_rated'
+          ? (b.our_score || 0)
+          : options?.sortBy === 'by_rating'
           ? (b.our_score || b.imdb_rating || b.tmdb_rating || 0)
           : (b.imdb_rating || b.tmdb_rating || b.our_score || 0)
+        
         return ratingB - ratingA
       })
     }
@@ -347,8 +353,9 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'best_rated':
       return shows.sort((a, b) => {
-        const ratingA = a.our_score || a.imdb_rating || a.tmdb_rating || 0
-        const ratingB = b.our_score || b.imdb_rating || b.tmdb_rating || 0
+        // For "best_rated", use ONLY our_score to match what's displayed
+        const ratingA = a.our_score || 0
+        const ratingB = b.our_score || 0
         return ratingB - ratingA
       })
     

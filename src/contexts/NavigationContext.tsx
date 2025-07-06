@@ -39,12 +39,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .eq('status', 'watchlist')
 
-      // Get rated count (both liked_it and loved_it)
+      // Get rated count (liked_it, loved_it, and not_for_me)
       const { count: ratedCountResult } = await supabase
         .from('user_shows')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .in('status', ['liked_it', 'loved_it'])
+        .in('status', ['liked_it', 'loved_it', 'not_for_me'])
 
       setWatchlistCount(watchlistCountResult || 0)
       setRatedCount(ratedCountResult || 0)
