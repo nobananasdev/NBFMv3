@@ -659,10 +659,39 @@ export async function fetchNewSeasonsShows(
         return nextSeasonDate > sixMonthsAgo
       })
       .sort((a: Show, b: Show) => {
-        // Sort by next_season_date, closest first
+        // Custom sorting for New Seasons: Future (furthest first) → Today → Past (recent first)
         const dateA = new Date(a.next_season_date!)
         const dateB = new Date(b.next_season_date!)
-        return dateA.getTime() - dateB.getTime()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0) // Reset to start of day for comparison
+        
+        const todayTime = today.getTime()
+        const timeA = dateA.getTime()
+        const timeB = dateB.getTime()
+        
+        // Categorize dates
+        const isFutureA = timeA > todayTime
+        const isFutureB = timeB > todayTime
+        const isTodayA = timeA === todayTime
+        const isTodayB = timeB === todayTime
+        
+        // Both future: furthest first (descending)
+        if (isFutureA && isFutureB) {
+          return timeB - timeA
+        }
+        
+        // Both past: most recent first (descending)
+        if (!isFutureA && !isTodayA && !isFutureB && !isTodayB) {
+          return timeB - timeA
+        }
+        
+        // Mixed categories: Future > Today > Past
+        if (isFutureA && !isFutureB) return -1  // A (future) before B
+        if (!isFutureA && isFutureB) return 1   // B (future) before A
+        if (isTodayA && !isTodayB && !isFutureB) return -1  // A (today) before B (past)
+        if (!isTodayA && !isFutureA && isTodayB) return 1   // B (today) before A (past)
+        
+        return 0 // Same category, maintain order
       })
 
     // Apply pagination
