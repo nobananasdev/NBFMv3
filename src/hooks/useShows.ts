@@ -154,12 +154,12 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     } finally {
       setLoading(false)
     }
-  }, [view, user, limit, sortBy, loading, offset]) // Include missing dependencies
+  }, [view, user, limit, sortBy]) // Remove loading and offset to avoid infinite loop
 
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
     await fetchShowsData(false)
-  }, [hasMore, loading, fetchShowsData])
+  }, [hasMore, fetchShowsData]) // Remove loading to avoid infinite loop
 
   const refresh = useCallback(async () => {
     setOffset(0)
@@ -210,7 +210,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [view, user?.id, autoFetch, sortBy, fetchShowsData])
+  }, [view, user?.id, autoFetch, sortBy]) // Remove fetchShowsData to avoid infinite loop
 
   // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
   useEffect(() => {
