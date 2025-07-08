@@ -90,7 +90,7 @@ export function DiscoverSection() {
       {!hasMore && !loading && shows.length > 0 && (
         <div className="text-center py-8">
           <div className="text-gray-500 text-lg font-medium mb-2">
-            That's it folks! 🎬
+            That&apos;s it folks! 🎬
           </div>
           <p className="text-gray-400">
             Come back soon - new great shows are added daily
