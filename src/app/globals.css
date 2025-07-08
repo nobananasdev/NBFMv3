@@ -63,10 +63,25 @@
     
     /* Button size adjustments for mobile */
     button {
-      font-size: 12px !important;                /* Default 16px -> 12px */
+      font-size: 14px !important;                /* Default 16px -> 14px (2px larger than previous 12px) */
       padding: 6px 12px !important;              /* Reduce padding */
       min-height: 32px !important;               /* Reduce minimum height */
     }
+    
+    /* Override text size classes specifically for buttons and their children to make them 2px larger */
+    button .text-xs, button.text-xs { font-size: 10px !important; }      /* 8px -> 10px (2px larger) */
+    button .text-sm, button.text-sm { font-size: 12px !important; }      /* 10px -> 12px (2px larger) */
+    button .text-base, button.text-base { font-size: 14px !important; }  /* 12px -> 14px (2px larger) */
+    button .text-lg, button.text-lg { font-size: 16px !important; }      /* 14px -> 16px (2px larger) */
+    button .text-xl, button.text-xl { font-size: 18px !important; }      /* 16px -> 18px (2px larger) */
+    button .text-2xl, button.text-2xl { font-size: 22px !important; }    /* 20px -> 22px (2px larger) */
+    button .text-3xl, button.text-3xl { font-size: 28px !important; }    /* 26px -> 28px (2px larger) */
+    button .text-4xl, button.text-4xl { font-size: 34px !important; }    /* 32px -> 34px (2px larger) */
+    button .text-5xl, button.text-5xl { font-size: 46px !important; }    /* 44px -> 46px (2px larger) */
+    button .text-6xl, button.text-6xl { font-size: 58px !important; }    /* 56px -> 58px (2px larger) */
+    button .text-7xl, button.text-7xl { font-size: 70px !important; }    /* 68px -> 70px (2px larger) */
+    button .text-8xl, button.text-8xl { font-size: 94px !important; }    /* 92px -> 94px (2px larger) */
+    button .text-9xl, button.text-9xl { font-size: 126px !important; }   /* 124px -> 126px (2px larger) */
     
     /* Tailwind button padding classes - make smaller on mobile */
     .px-1 { padding-left: 2px !important; padding-right: 2px !important; }
