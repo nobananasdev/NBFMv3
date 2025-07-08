@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { SortOption } from '@/hooks/useShows'
 
 interface SortSelectorProps {
@@ -14,63 +13,45 @@ interface SortSelectorProps {
 }
 
 export default function SortSelector({ value, onChange, options, className = '' }: SortSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const selectedOption = options.find(option => option.value === value)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
-
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      >
-        <span>Sort by: {selectedOption?.label}</span>
-        <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    <div className={`flex gap-4 ${className}`}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className="inline-flex px-[20px] py-[5px] justify-center items-center gap-[10px] rounded-[10px] border border-black transition-all duration-300 ease-out transform hover:scale-105 hover:-translate-y-1 active:scale-95"
+          style={{
+            backgroundColor: value === option.value ? '#000' : '#FFF',
+            boxShadow: value === option.value
+              ? '3px 3px 0px 0px #FFE38F'
+              : '3px 3px 0px 0px #000'
+          }}
+          onMouseEnter={(e) => {
+            if (value !== option.value) {
+              e.currentTarget.style.backgroundColor = '#F8F8F8'
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #FFE38F'
+            } else {
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #FFE38F'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (value !== option.value) {
+              e.currentTarget.style.backgroundColor = '#FFF'
+              e.currentTarget.style.boxShadow = '3px 3px 0px 0px #000'
+            } else {
+              e.currentTarget.style.boxShadow = '3px 3px 0px 0px #FFE38F'
+            }
+          }}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 z-10 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg">
-          <div className="py-1">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
-                  option.value === value
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+          <span
+            className={`font-bold text-xs leading-[30px] tracking-[0.36px] ${
+              value === option.value ? 'text-white' : 'text-black'
+            }`}
+          >
+            {option.label}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }

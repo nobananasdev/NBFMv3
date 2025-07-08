@@ -4,24 +4,91 @@
 
 @layer base {
   html {
-    font-family: system-ui, sans-serif;
+    font-family: Inter, system-ui, sans-serif;
   }
   
   body {
-    @apply bg-background text-gray-900;
+    @apply bg-background text-gray-900 font-sans;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-card shadow-card rounded-card transition-all duration-200;
+    @apply bg-card shadow-card rounded-card border border-black transition-all duration-300 ease-out;
   }
   
   .card:hover {
-    @apply shadow-card-hover;
+    @apply shadow-card-hover transform scale-[1.02];
   }
   
   .btn {
     @apply rounded-button transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .bg-white {
+    background-color: transparent !important;
+  }
+  
+  /* Mobile font size adjustments - 4px smaller for all text sizes */
+  @media (max-width: 768px) {
+    .text-xs { font-size: 8px !important; }      /* 12px -> 8px */
+    .text-sm { font-size: 10px !important; }     /* 14px -> 10px */
+    .text-base { font-size: 12px !important; }   /* 16px -> 12px */
+    .text-lg { font-size: 14px !important; }     /* 18px -> 14px */
+    .text-xl { font-size: 16px !important; }     /* 20px -> 16px */
+    .text-2xl { font-size: 20px !important; }    /* 24px -> 20px */
+    .text-3xl { font-size: 26px !important; }    /* 30px -> 26px */
+    .text-4xl { font-size: 32px !important; }    /* 36px -> 32px */
+    .text-5xl { font-size: 44px !important; }    /* 48px -> 44px */
+    .text-6xl { font-size: 56px !important; }    /* 60px -> 56px */
+    .text-7xl { font-size: 68px !important; }    /* 72px -> 68px */
+    .text-8xl { font-size: 92px !important; }    /* 96px -> 92px */
+    .text-9xl { font-size: 124px !important; }   /* 128px -> 124px */
+    
+    /* Also apply to elements without explicit text size classes */
+    body { font-size: 12px !important; }         /* Default 16px -> 12px */
+    h1 { font-size: 28px !important; }           /* Default 32px -> 28px */
+    h2 { font-size: 20px !important; }           /* Default 24px -> 20px */
+    h3 { font-size: 16px !important; }           /* Default 20px -> 16px */
+    h4 { font-size: 14px !important; }           /* Default 18px -> 14px */
+    h5 { font-size: 12px !important; }           /* Default 16px -> 12px */
+    h6 { font-size: 10px !important; }           /* Default 14px -> 10px */
+    p { font-size: 12px !important; }            /* Default 16px -> 12px */
+    span { font-size: inherit !important; }      /* Inherit from parent */
+    div { font-size: inherit !important; }       /* Inherit from parent */
+    input { font-size: 12px !important; }        /* Default 16px -> 12px */
+    label { font-size: 10px !important; }        /* Default 14px -> 10px */
+    
+    /* Button size adjustments for mobile */
+    button {
+      font-size: 12px !important;                /* Default 16px -> 12px */
+      padding: 6px 12px !important;              /* Reduce padding */
+      min-height: 32px !important;               /* Reduce minimum height */
+    }
+    
+    /* Tailwind button padding classes - make smaller on mobile */
+    .px-1 { padding-left: 2px !important; padding-right: 2px !important; }
+    .px-2 { padding-left: 4px !important; padding-right: 4px !important; }
+    .px-3 { padding-left: 8px !important; padding-right: 8px !important; }
+    .px-4 { padding-left: 12px !important; padding-right: 12px !important; }
+    .px-5 { padding-left: 16px !important; padding-right: 16px !important; }
+    .px-6 { padding-left: 20px !important; padding-right: 20px !important; }
+    .px-8 { padding-left: 28px !important; padding-right: 28px !important; }
+    
+    .py-1 { padding-top: 2px !important; padding-bottom: 2px !important; }
+    .py-2 { padding-top: 4px !important; padding-bottom: 4px !important; }
+    .py-3 { padding-top: 8px !important; padding-bottom: 8px !important; }
+    .py-4 { padding-top: 12px !important; padding-bottom: 12px !important; }
+    .py-5 { padding-top: 16px !important; padding-bottom: 16px !important; }
+    .py-6 { padding-top: 20px !important; padding-bottom: 20px !important; }
+    
+    /* Height classes for buttons */
+    .h-8 { height: 28px !important; }            /* 32px -> 28px */
+    .h-9 { height: 32px !important; }            /* 36px -> 32px */
+    .h-10 { height: 36px !important; }           /* 40px -> 36px */
+    .h-11 { height: 40px !important; }           /* 44px -> 40px */
+    .h-12 { height: 44px !important; }           /* 48px -> 44px */
   }
 }

@@ -24,31 +24,31 @@ interface ShowCardProps {
 const ACTION_BUTTONS = [
   {
     status: 'watchlist' as ShowStatus,
-    label: 'Add to Watchlist',
+    label: 'Add To Watchlist',
     successLabel: 'Added to Watchlist',
     icon: '➕',
-    className: 'bg-blue-500 hover:bg-blue-600 text-white'
+    className: 'bg-white border-black text-black hover:bg-blue-50 hover:border-blue-500 hover:text-blue-600 hover:shadow-blue-300'
   },
   {
     status: 'not_for_me' as ShowStatus,
     label: 'Not For Me',
     successLabel: 'Bananas! 🍌',
-    icon: '🚫',
-    className: 'bg-red-500 hover:bg-red-600 text-white'
+    icon: '⛔',
+    className: 'bg-white border-black text-black hover:bg-red-50 hover:border-red-500 hover:text-red-600 hover:shadow-red-300'
   },
   {
     status: 'liked_it' as ShowStatus,
-    label: 'Liked It',
+    label: 'OK',
     successLabel: 'Liked it! 👍',
-    icon: '👍',
-    className: 'bg-green-500 hover:bg-green-600 text-white'
+    icon: '👍🏿',
+    className: 'bg-white border-black text-black hover:bg-green-50 hover:border-green-500 hover:text-green-600 hover:shadow-green-300'
   },
   {
     status: 'loved_it' as ShowStatus,
-    label: 'Loved It',
+    label: 'Love It',
     successLabel: 'Loved it! ❤️',
-    icon: '❤️',
-    className: 'bg-pink-500 hover:bg-pink-600 text-white'
+    icon: '🖤',
+    className: 'bg-white border-black text-black hover:bg-pink-50 hover:border-pink-500 hover:text-pink-600 hover:shadow-pink-300'
   }
 ]
 
@@ -141,8 +141,23 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
     <div className="card min-h-[320px] p-6 relative">
       {/* Rating Badge - Top Right */}
       {rating && (
-        <div className="absolute top-4 right-4 bg-yellow-400 text-black px-2 py-1 rounded-md text-sm font-bold shadow-sm">
-          ⭐ {rating.value}
+        <div
+          className="absolute top-4 right-4 flex flex-col justify-center items-center flex-shrink-0 font-sans text-black font-bold"
+          style={{
+            width: '58px',
+            height: '58px',
+            padding: '10px 30px',
+            gap: '-4px',
+            borderRadius: '10px',
+            border: '1px solid #000',
+            
+            fontSize: '16px',
+            lineHeight: '30px',
+            letterSpacing: '0.48px'
+          }}
+          title="This is the overall rating for this series"
+        >
+          {rating.value}
         </div>
       )}
       
@@ -150,7 +165,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
       <div className="hidden md:flex gap-6">
         {/* Poster */}
         <div className="flex-shrink-0">
-          <div className="w-[200px] h-[300px] relative bg-gray-100 rounded-lg overflow-hidden">
+          <div className="w-[200px] h-[300px] relative bg-gray-100 rounded-lg overflow-hidden" style={{ position: 'relative' }}>
             {posterUrl ? (
               <Image
                 src={posterUrl}
@@ -174,7 +189,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
         <div className="flex-1 flex flex-col">
           <div className="flex-1">
             {/* Title */}
-            <h3 className="text-2xl font-bold mb-2 leading-tight">
+            <h3 className="text-[28px] font-bold mb-2 leading-normal text-black" style={{ letterSpacing: '0.96px' }}>
               {show.title}
             </h3>
 
@@ -201,7 +216,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
 
             {/* Plot */}
             {description && (
-              <p className="text-gray-700 mb-4 leading-relaxed">
+              <p className="text-base font-normal mb-4 text-black" style={{ fontSize: '16px', fontWeight: 400, lineHeight: '30px', letterSpacing: '0.48px', color: '#000' }}>
                 {description}
               </p>
             )}
@@ -216,7 +231,16 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
                   {streamingProviders.map((provider) => (
                     <span
                       key={provider.provider_id}
-                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                      className="inline-flex justify-center items-center gap-2 text-white text-xs font-medium"
+                      style={{
+                        display: 'inline-flex',
+                        padding: '6px 20px',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '10px',
+                        borderRadius: '8px',
+                        background: '#020202'
+                      }}
                     >
                       {provider.provider_name}
                     </span>
@@ -231,36 +255,68 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
                 href={buildImdbUrl(show.imdb_id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                className="inline-flex items-center font-sans hover:text-blue-800"
+                style={{
+                  color: '#000',
+                  fontSize: '16px',
+                  fontStyle: 'normal',
+                  fontWeight: 400,
+                  lineHeight: '30px',
+                  letterSpacing: '0.48px'
+                }}
               >
-                View on IMDb ↗
+                IMDB ↗
               </a>
             </div>
           </div>
 
           {/* Action Buttons */}
           {showActions && (
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+            <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
               {ACTION_BUTTONS
                 .filter(button => !hiddenActions.includes(button.status))
                 .map((button) => {
                   // Check if this button matches the user's rating
                   const isUserRated = show.user_status === button.status
-                  const baseClassName = isUserRated
-                    ? `${button.className} ring-2 ring-white ring-opacity-50 shadow-lg`
-                    : `${button.className.replace('bg-', 'bg-gray-200 hover:bg-')} text-gray-700 hover:text-white`
                   
                   return (
                     <button
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`btn px-3 py-2 text-sm font-medium ${baseClassName} ${
+                      className={`group rounded-[10px] border transition-all duration-300 ease-out font-bold text-xs leading-[30px] tracking-[0.36px] transform hover:scale-105 hover:-translate-y-1 ${button.className} ${
                         isProcessing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
+                      style={{
+                        display: 'inline-flex',
+                        padding: '10px 30px',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '10px',
+                        boxShadow: isUserRated
+                          ? '3px 3px 0px 0px #FFE38F'
+                          : '3px 3px 0px 0px #000',
+                        transition: 'all 0.3s ease-out'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isProcessing) {
+                          const shadowColor = button.className.includes('hover:shadow-blue') ? '#93C5FD' :
+                                            button.className.includes('hover:shadow-red') ? '#FCA5A5' :
+                                            button.className.includes('hover:shadow-green') ? '#86EFAC' :
+                                            button.className.includes('hover:shadow-pink') ? '#F9A8D4' : '#000';
+                          e.currentTarget.style.boxShadow = `5px 5px 0px 0px ${shadowColor}`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isProcessing) {
+                          e.currentTarget.style.boxShadow = isUserRated
+                            ? '3px 3px 0px 0px #FFE38F'
+                            : '3px 3px 0px 0px #000';
+                        }
+                      }}
                       title={!user ? 'Sign up to use this feature' : isUserRated ? `You rated this: ${button.label}` : ''}
                     >
-                      <span className="mr-1">{button.icon}</span>
+                      <span className="mr-1 transition-transform duration-300 group-hover:scale-110">{button.icon}</span>
                       {button.label}
                       {isUserRated && <span className="ml-1">✓</span>}
                     </button>
@@ -275,7 +331,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
       <div className="md:hidden">
         {/* Poster */}
         <div className="mb-4">
-          <div className="w-[200px] h-[300px] relative bg-gray-100 rounded-lg overflow-hidden mx-auto">
+          <div className="w-[200px] h-[300px] relative bg-gray-100 rounded-lg overflow-hidden mx-auto" style={{ position: 'relative' }}>
             {posterUrl ? (
               <Image
                 src={posterUrl}
@@ -298,12 +354,12 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
         {/* Content */}
         <div>
           {/* Title */}
-          <h3 className="text-xl font-bold mb-2 leading-tight">
+          <h3 className="text-[28px] font-bold mb-2 leading-normal text-black text-center" style={{ letterSpacing: '0.96px' }}>
             {show.title}
           </h3>
 
           {/* Metadata */}
-          <div className="text-gray-600 mb-3">
+          <div className="text-gray-600 mb-3 text-center">
             {airDate && genreNames.length > 0 && (
               <span>{airDate} • {genreNames.join(', ')}</span>
             )}
@@ -319,28 +375,37 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
           <div className="border-t border-gray-200 mb-3"></div>
 
           {/* Series Info */}
-          <div className="text-sm font-medium text-gray-700 mb-3">
+          <div className="text-sm font-medium text-gray-700 mb-3 text-center">
             {seriesInfo}
           </div>
 
           {/* Plot */}
           {description && (
-            <p className="text-gray-700 mb-4 leading-relaxed">
+            <p className="text-base font-normal mb-4 text-black text-center" style={{ fontSize: '16px', fontWeight: 400, lineHeight: '30px', letterSpacing: '0.48px', color: '#000' }}>
               {description}
             </p>
           )}
 
           {/* Streaming Providers */}
           {streamingProviders.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 text-center">
               <div className="text-sm font-medium text-gray-700 mb-2">
                 Streaming on:
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {streamingProviders.map((provider) => (
                   <span
                     key={provider.provider_id}
-                    className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                    className="inline-flex justify-center items-center gap-2 text-white text-xs font-medium"
+                    style={{
+                      display: 'inline-flex',
+                      padding: '6px 20px',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '10px',
+                      borderRadius: '8px',
+                      background: '#020202'
+                    }}
                   >
                     {provider.provider_name}
                   </span>
@@ -350,40 +415,72 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
           )}
 
           {/* IMDb Link */}
-          <div className="mb-4">
+          <div className="mb-4 text-center">
             <a
               href={buildImdbUrl(show.imdb_id)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+              className="inline-flex items-center font-sans hover:text-blue-800"
+              style={{
+                color: '#000',
+                fontSize: '16px',
+                fontStyle: 'normal',
+                fontWeight: 400,
+                lineHeight: '30px',
+                letterSpacing: '0.48px'
+              }}
             >
-              View on IMDb ↗
+              IMDB ↗
             </a>
           </div>
 
           {/* Action Buttons */}
           {showActions && (
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+            <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100 justify-center">
               {ACTION_BUTTONS
                 .filter(button => !hiddenActions.includes(button.status))
                 .map((button) => {
                   // Check if this button matches the user's rating
                   const isUserRated = show.user_status === button.status
-                  const baseClassName = isUserRated
-                    ? `${button.className} ring-2 ring-white ring-opacity-50 shadow-lg`
-                    : `${button.className.replace('bg-', 'bg-gray-200 hover:bg-')} text-gray-700 hover:text-white`
                   
                   return (
                     <button
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`btn px-3 py-2 text-sm font-medium ${baseClassName} ${
+                      className={`group rounded-[10px] border transition-all duration-300 ease-out font-bold text-xs leading-[30px] tracking-[0.36px] transform hover:scale-105 hover:-translate-y-1 ${button.className} ${
                         isProcessing ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
+                      style={{
+                        display: 'inline-flex',
+                        padding: '10px 30px',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '10px',
+                        boxShadow: isUserRated
+                          ? '3px 3px 0px 0px #FFE38F'
+                          : '3px 3px 0px 0px #000',
+                        transition: 'all 0.3s ease-out'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isProcessing) {
+                          const shadowColor = button.className.includes('hover:shadow-blue') ? '#93C5FD' :
+                                            button.className.includes('hover:shadow-red') ? '#FCA5A5' :
+                                            button.className.includes('hover:shadow-green') ? '#86EFAC' :
+                                            button.className.includes('hover:shadow-pink') ? '#F9A8D4' : '#000';
+                          e.currentTarget.style.boxShadow = `5px 5px 0px 0px ${shadowColor}`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isProcessing) {
+                          e.currentTarget.style.boxShadow = isUserRated
+                            ? '3px 3px 0px 0px #FFE38F'
+                            : '3px 3px 0px 0px #000';
+                        }
+                      }}
                       title={!user ? 'Sign up to use this feature' : isUserRated ? `You rated this: ${button.label}` : ''}
                     >
-                      <span className="mr-1">{button.icon}</span>
+                      <span className="mr-1 transition-transform duration-300 group-hover:scale-110">{button.icon}</span>
                       {button.label}
                       {isUserRated && <span className="ml-1">✓</span>}
                     </button>

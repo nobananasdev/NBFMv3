@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { Auth } from '../auth/Auth'
 
@@ -41,53 +42,90 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              No Bananas For Me
-            </h1>
+      <header className="mt-5">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="h-16 sm:h-20 lg:h-[91px] rounded-[20px]">
+          <div className="flex items-center justify-between h-full px-[10px]">
+            <div className="flex items-center">
+              <Image
+                src="/nobananasformelogo.png"
+                alt="No Bananas For Me"
+                width={400}
+                height={200}
+                className="h-16 sm:h-20 lg:h-24 w-auto"
+                priority
+                quality={100}
+                unoptimized
+              />
+            </div>
             
             {user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">
+                <span className="text-xs sm:text-sm text-gray-700 hidden sm:block">
                   Welcome, {getUserDisplayName()}
                 </span>
                 <button
                   onClick={handleReset}
                   disabled={isResetting}
-                  className="btn bg-red-100 hover:bg-red-200 text-red-700 text-sm px-3 py-1 border border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex px-[20px] py-[5px] justify-center items-center gap-[10px] rounded-[10px] border border-black transition-all duration-300 ease-out transform hover:scale-105 hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  style={{
+                    backgroundColor: '#FFF'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isResetting) {
+                      e.currentTarget.style.backgroundColor = '#F8F8F8'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isResetting) {
+                      e.currentTarget.style.backgroundColor = '#FFF'
+                    }
+                  }}
                 >
-                  {isResetting ? 'Resetting...' : 'Reset Data'}
+                  <span className="font-bold text-xs leading-[30px] tracking-[0.36px] text-black">
+                    {isResetting ? 'Resetting...' : 'Reset Data'}
+                  </span>
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 border border-gray-300"
+                  className="inline-flex px-[20px] py-[5px] justify-center items-center gap-[10px] rounded-[10px] border border-black transition-all duration-300 ease-out transform hover:scale-105 hover:-translate-y-1 active:scale-95"
+                  style={{
+                    backgroundColor: '#FFF'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F8F8F8'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FFF'
+                  }}
                 >
-                  Sign Out
+                  <span className="font-bold text-xs leading-[30px] tracking-[0.36px] text-black">
+                    Sign Out
+                  </span>
                 </button>
               </div>
             ) : (
               <div className="flex items-center space-x-2">
                 <button
                   onClick={openSignIn}
-                  className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded border border-gray-300"
+                  className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2 rounded"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={openSignUp}
-                  className="btn bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded"
+                  className="btn bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2 rounded"
                 >
                   Sign Up
                 </button>
               </div>
             )}
+          </div>
+          </div>
         </div>
-      </div>
-    </header>
-    
-    {showAuth && <Auth onClose={() => setShowAuth(false)} initialMode={authMode} />}
+      </header>
+      
+      {showAuth && <Auth onClose={() => setShowAuth(false)} initialMode={authMode} />}
     </>
   )
 }

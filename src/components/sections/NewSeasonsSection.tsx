@@ -37,15 +37,6 @@ export function NewSeasonsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          New Seasons
-        </h2>
-        <p className="text-gray-600">
-          Stay updated with new seasons of your favorite shows
-        </p>
-      </div>
-
       {!user ? (
         <div className="card p-6 text-center">
           <h3 className="text-lg font-semibold mb-3">Sign in to see new seasons</h3>

@@ -95,58 +95,68 @@ export default function NewSeasonsList({
           const { seasonText, airDate, isUpcoming } = formatSeasonInfo(show)
 
           return (
-            <div key={show.imdb_id} className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-              {/* Small Poster */}
-              <div className="flex-shrink-0 w-[30px] h-[45px] relative bg-gray-100 rounded overflow-hidden">
-                {posterUrl ? (
-                  <Image
-                    src={posterUrl}
-                    alt={show.title}
-                    fill
-                    className="object-cover"
-                    sizes="30px"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                    <div className="text-gray-400 text-xs">📺</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Show Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate">
-                  {show.title}
-                </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <span className={`font-medium ${isUpcoming ? 'text-blue-600' : 'text-green-600'}`}>
-                    {seasonText}
-                  </span>
-                  <span className="text-gray-400">•</span>
-                  <span>{airDate}</span>
+            <div key={show.imdb_id} className="card p-4 relative">
+              <div className="flex items-center gap-4">
+                {/* Small Poster */}
+                <div className="flex-shrink-0 w-[30px] h-[45px] relative bg-gray-100 rounded overflow-hidden">
+                  {posterUrl ? (
+                    <Image
+                      src={posterUrl}
+                      alt={show.title}
+                      fill
+                      className="object-cover"
+                      sizes="30px"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <div className="text-gray-400 text-xs">📺</div>
+                    </div>
+                  )}
                 </div>
-                {isUpcoming && (
-                  <div className="text-xs text-blue-600 mt-1">
-                    Upcoming
-                  </div>
-                )}
-                {!isUpcoming && (
-                  <div className="text-xs text-green-600 mt-1">
-                    Recently Released
-                  </div>
-                )}
-              </div>
 
-              {/* IMDb Link */}
-              <div className="flex-shrink-0">
-                <a
-                  href={`https://www.imdb.com/title/${show.imdb_id}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  IMDb ↗
-                </a>
+                {/* Show Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[20px] font-bold mb-1 leading-normal text-black truncate" style={{ letterSpacing: '0.6px' }}>
+                    {show.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                    <span className={`font-medium ${isUpcoming ? 'text-blue-600' : 'text-green-600'}`}>
+                      {seasonText}
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span>{airDate}</span>
+                  </div>
+                  {isUpcoming && (
+                    <div className="text-xs text-blue-600">
+                      Upcoming
+                    </div>
+                  )}
+                  {!isUpcoming && (
+                    <div className="text-xs text-green-600">
+                      Recently Released
+                    </div>
+                  )}
+                </div>
+
+                {/* IMDb Link */}
+                <div className="flex-shrink-0">
+                  <a
+                    href={`https://www.imdb.com/title/${show.imdb_id}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center font-sans hover:text-blue-800"
+                    style={{
+                      color: '#000',
+                      fontSize: '14px',
+                      fontStyle: 'normal',
+                      fontWeight: 400,
+                      lineHeight: '20px',
+                      letterSpacing: '0.42px'
+                    }}
+                  >
+                    IMDB ↗
+                  </a>
+                </div>
               </div>
             </div>
           )

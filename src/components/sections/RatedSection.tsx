@@ -45,15 +45,6 @@ export function RatedSection() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Rated
-        </h2>
-        <p className="text-gray-600">
-          Shows and movies you&apos;ve rated
-        </p>
-      </div>
-      
       {!user ? (
         <div className="card p-6 text-center">
           <h3 className="text-lg font-semibold mb-3">Sign in to view your ratings</h3>
