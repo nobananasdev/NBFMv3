@@ -2,6 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom range slider styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: #d1d5db;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #3a3a3a;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-top: -6px;
+}
+
+.slider::-moz-range-track {
+  background: #d1d5db;
+  height: 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  background: #3a3a3a;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.slider:focus {
+  outline: none;
+}
+
+.slider:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.slider:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
 @layer base {
   html {
     font-family: Inter, system-ui, sans-serif;
@@ -27,10 +80,6 @@
 }
 
 @layer utilities {
-  .bg-white {
-    background-color: transparent !important;
-  }
-  
   /* Mobile font size adjustments - 4px smaller for all text sizes */
   @media (max-width: 768px) {
     .text-xs { font-size: 8px !important; }      /* 12px -> 8px */
@@ -63,25 +112,10 @@
     
     /* Button size adjustments for mobile */
     button {
-      font-size: 14px !important;                /* Default 16px -> 14px (2px larger than previous 12px) */
+      font-size: 12px !important;                /* Default 16px -> 12px */
       padding: 6px 12px !important;              /* Reduce padding */
       min-height: 32px !important;               /* Reduce minimum height */
     }
-    
-    /* Override text size classes specifically for buttons and their children to make them 2px larger */
-    button .text-xs, button.text-xs { font-size: 10px !important; }      /* 8px -> 10px (2px larger) */
-    button .text-sm, button.text-sm { font-size: 12px !important; }      /* 10px -> 12px (2px larger) */
-    button .text-base, button.text-base { font-size: 14px !important; }  /* 12px -> 14px (2px larger) */
-    button .text-lg, button.text-lg { font-size: 16px !important; }      /* 14px -> 16px (2px larger) */
-    button .text-xl, button.text-xl { font-size: 18px !important; }      /* 16px -> 18px (2px larger) */
-    button .text-2xl, button.text-2xl { font-size: 22px !important; }    /* 20px -> 22px (2px larger) */
-    button .text-3xl, button.text-3xl { font-size: 28px !important; }    /* 26px -> 28px (2px larger) */
-    button .text-4xl, button.text-4xl { font-size: 34px !important; }    /* 32px -> 34px (2px larger) */
-    button .text-5xl, button.text-5xl { font-size: 46px !important; }    /* 44px -> 46px (2px larger) */
-    button .text-6xl, button.text-6xl { font-size: 58px !important; }    /* 56px -> 58px (2px larger) */
-    button .text-7xl, button.text-7xl { font-size: 70px !important; }    /* 68px -> 70px (2px larger) */
-    button .text-8xl, button.text-8xl { font-size: 94px !important; }    /* 92px -> 94px (2px larger) */
-    button .text-9xl, button.text-9xl { font-size: 126px !important; }   /* 124px -> 126px (2px larger) */
     
     /* Tailwind button padding classes - make smaller on mobile */
     .px-1 { padding-left: 2px !important; padding-right: 2px !important; }

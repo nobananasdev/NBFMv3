@@ -11,6 +11,8 @@ interface NavigationContextType {
   setActiveSection: (section: NavigationSection) => void
   watchlistCount: number
   ratedCount: number
+  discoverCount: number
+  newSeasonsCount: number
   refreshCounters: () => Promise<void>
   refreshTrigger: number
 }
@@ -21,17 +23,28 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [activeSection, setActiveSection] = useState<NavigationSection>('discover')
   const [watchlistCount, setWatchlistCount] = useState(0)
   const [ratedCount, setRatedCount] = useState(0)
+  const [discoverCount, setDiscoverCount] = useState(0)
+  const [newSeasonsCount, setNewSeasonsCount] = useState(0)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { user } = useAuth()
 
   const refreshCounters = useCallback(async () => {
-    if (!user) {
-      setWatchlistCount(0)
-      setRatedCount(0)
-      return
-    }
-
     try {
+      // Get discovery count (shows with show_in_discovery = true, excluding user shows if logged in)
+      const { count: discoverCountResult } = await supabase
+        .from('shows')
+        .select('*', { count: 'exact', head: true })
+        .eq('show_in_discovery', true)
+
+      setDiscoverCount(discoverCountResult || 0)
+
+      if (!user) {
+        setWatchlistCount(0)
+        setRatedCount(0)
+        setNewSeasonsCount(0)
+        return
+      }
+
       // Get watchlist count
       const { count: watchlistCountResult } = await supabase
         .from('user_shows')
@@ -46,8 +59,29 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .in('status', ['liked_it', 'loved_it', 'not_for_me'])
 
+      // Get new seasons count (shows user rated as loved_it or liked_it with next_season_date)
+      const { data: userLikedShows } = await supabase
+        .from('user_shows')
+        .select(`
+          imdb_id,
+          shows:imdb_id (next_season_date)
+        `)
+        .eq('user_id', user.id)
+        .in('status', ['liked_it', 'loved_it'])
+
+      const currentDate = new Date()
+      const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
+
+      const newSeasonsCount = userLikedShows?.filter(us => {
+        const show = us.shows as any
+        if (!show?.next_season_date) return false
+        const nextSeasonDate = new Date(show.next_season_date)
+        return nextSeasonDate > sixMonthsAgo
+      }).length || 0
+
       setWatchlistCount(watchlistCountResult || 0)
       setRatedCount(ratedCountResult || 0)
+      setNewSeasonsCount(newSeasonsCount)
       
       // Trigger refresh for all sections that depend on user data
       setRefreshTrigger(prev => prev + 1)
@@ -66,6 +100,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setActiveSection,
       watchlistCount,
       ratedCount,
+      discoverCount,
+      newSeasonsCount,
       refreshCounters,
       refreshTrigger
     }}>

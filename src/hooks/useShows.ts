@@ -5,6 +5,8 @@ import { ShowWithGenres, fetchShows, fetchUserShows, fetchNewSeasonsShows } from
 import { ShowStatus } from '@/types/database'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { useContext } from 'react'
+import { FilterContext } from '@/contexts/FilterContext'
 
 export type ShowsViewType = 'discover' | 'watchlist' | 'loved_it' | 'liked_it' | 'new_seasons' | 'all_rated'
 
@@ -32,6 +34,14 @@ interface UseShowsReturn {
 export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSortBy }: UseShowsOptions): UseShowsReturn {
   const { user } = useAuth()
   const { refreshCounters, refreshTrigger } = useNavigation()
+  
+  // Only use filter context for discover view
+  const filterContext = view === 'discover' ? useContext(FilterContext) : null
+  const filters = filterContext?.filters || {
+    selectedGenres: [],
+    yearRange: [2000, 2024] as [number, number],
+    selectedStreamers: []
+  }
   const [shows, setShows] = useState<ShowWithGenres[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<any>(null)
@@ -61,7 +71,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     setError(null)
 
     try {
-      let result: { shows: ShowWithGenres[], error: any }
+      let result: { shows: ShowWithGenres[], error: any, hasMore?: boolean }
 
       const currentOffset = reset ? 0 : offset
       const effectiveSortBy = overrideSortBy || sortBy
@@ -84,7 +94,10 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           ...options,
           sortBy: effectiveSortBy,
           showInDiscovery: true,
-          excludeUserShows: !!user
+          excludeUserShows: !!user,
+          genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
+          yearRange: filters.yearRange,
+          streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined
         })
       } else if (view === 'watchlist') {
         if (!user) {
@@ -143,8 +156,16 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
           setOffset(prev => prev + result.shows.length)
         }
         
-        // Check if we have more shows to load
-        setHasMore(result.shows.length === limit)
+        // Use hasMore from result if available (for discover view), otherwise fallback to length check
+        if (view === 'discover' && result.hasMore !== undefined) {
+          setHasMore(result.hasMore)
+          console.log('🔍 [useShows] Using hasMore from fetchShows result:', result.hasMore)
+        } else {
+          // Fallback for other views - check if we got fewer shows than requested
+          const hasMoreShows = result.shows.length === (adjustedLimit === 1000 ? limit : adjustedLimit)
+          setHasMore(hasMoreShows)
+          console.log('🔍 [useShows] Using fallback hasMore logic:', hasMoreShows, 'got', result.shows.length, 'expected', adjustedLimit === 1000 ? limit : adjustedLimit)
+        }
       }
     } catch (err) {
       console.error('Error fetching shows:', err)
@@ -154,7 +175,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     } finally {
       setLoading(false)
     }
-  }, [view, user, limit, sortBy]) // Remove loading and offset to avoid infinite loop
+  }, [view, user?.id, limit, offset, sortBy, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
 
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
@@ -210,7 +231,23 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [view, user?.id, autoFetch, sortBy]) // Remove fetchShowsData to avoid infinite loop
+  }, [view, user?.id, autoFetch]) // Remove sortBy and fetchShowsData to avoid infinite loop
+
+  // Handle sort changes separately
+  useEffect(() => {
+    if (autoFetch) {
+      setOffset(0)
+      fetchShowsData(true)
+    }
+  }, [sortBy]) // Separate effect for sort changes
+
+  // Refetch when filters change (only for discover view)
+  useEffect(() => {
+    if (view === 'discover' && autoFetch) {
+      setOffset(0)
+      fetchShowsData(true)
+    }
+  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
 
   // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
   useEffect(() => {
@@ -219,7 +256,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [refreshTrigger, user, view, fetchShowsData])
+  }, [refreshTrigger])
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {

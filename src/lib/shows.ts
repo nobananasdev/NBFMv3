@@ -18,7 +18,10 @@ export async function fetchShows(options: {
   excludeUserShows?: boolean
   userId?: string
   sortBy?: SortOption
-}): Promise<{ shows: ShowWithGenres[], error: any }> {
+  genreIds?: number[]
+  yearRange?: [number, number]
+  streamerIds?: number[]
+}): Promise<{ shows: ShowWithGenres[], error: any, totalFiltered?: number, hasMore?: boolean }> {
   try {
     console.log('🔍 [fetchShows] Fetching shows with options:', options)
     
@@ -51,9 +54,72 @@ export async function fetchShows(options: {
       }
     }
     
-    // Step 2: Fetch all shows
-    console.log('🔍 [fetchShows] Fetching all shows...')
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,title,show_in_discovery,tmdb_id,original_title,first_air_date,last_air_date,status,imdb_rating,imdb_vote_count,tmdb_rating,tmdb_vote_count,our_score,overview,our_description,poster_path,poster_url,poster_thumb_url,genre_ids,trailer_key,season_count,episode_count,show_type,streaming_info,next_season_date,created_at,updated_at,tmdb_synced_at,needs_sync,is_hidden,is_trash,main_cast,creators,origin_country,original_language&limit=${(options.limit || 20) + userShowIds.length}`
+    // Step 2: Build query with filters applied at database level
+    console.log('🔍 [fetchShows] Building filtered query...')
+    
+    // Build the base query with filters
+    let queryParams = []
+    
+    // Discovery filter
+    if (options.showInDiscovery) {
+      queryParams.push('show_in_discovery=eq.true')
+    }
+    
+    // Year range filter - only apply if it's not the default wide range
+    if (options.yearRange && !(options.yearRange[0] === 1950 && options.yearRange[1] === 2025)) {
+      const [minYear, maxYear] = options.yearRange
+      queryParams.push(`first_air_date=gte.${minYear}-01-01`)
+      queryParams.push(`first_air_date=lte.${maxYear}-12-31`)
+    }
+    
+    // Exclude user shows filter
+    if (options.excludeUserShows && userShowIds.length > 0) {
+      // For large lists, we'll filter in memory instead of URL params
+      console.log('🔍 [fetchShows] Will filter user shows in memory due to large list')
+    }
+    
+    // Build sorting
+    let orderParam = ''
+    switch (options.sortBy) {
+      case 'latest':
+        orderParam = '&order=first_air_date.desc.nullslast'
+        break
+      case 'rating':
+      case 'by_rating':
+        // Use our_score first, then imdb_rating as fallback, then tmdb_rating
+        orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,tmdb_rating.desc.nullslast'
+        break
+      case 'recently_added':
+        orderParam = '&order=created_at.desc'
+        break
+      case 'best_rated':
+        // Only use our_score for best_rated
+        orderParam = '&order=our_score.desc.nullslast'
+        break
+      default:
+        orderParam = '&order=first_air_date.desc.nullslast'
+        break
+    }
+    
+    // Calculate fetch limit - balance between having enough content and fast loading
+    // We need to fetch more than requested to account for filtering
+    const baseLimit = options.limit || 20
+    let fetchLimit = Math.max(baseLimit * 15, 500) // Fetch 15x more to account for filtering
+    
+    // If we're excluding user shows and there are many, increase the limit further
+    if (options.excludeUserShows && userShowIds.length > 50) {
+      fetchLimit = Math.max(baseLimit * 25, 800)
+    }
+    
+    // For discovery view with offset (infinite scroll), fetch more to ensure we have content
+    if (options.showInDiscovery && (options.offset || 0) > 0) {
+      fetchLimit = Math.max(baseLimit * 30, 1000)
+    }
+    
+    const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,title,show_in_discovery,tmdb_id,original_title,first_air_date,last_air_date,status,imdb_rating,imdb_vote_count,tmdb_rating,tmdb_vote_count,our_score,overview,our_description,poster_path,poster_url,poster_thumb_url,genre_ids,trailer_key,season_count,episode_count,show_type,streaming_info,next_season_date,created_at,updated_at,tmdb_synced_at,needs_sync,is_hidden,is_trash,main_cast,creators,origin_country,original_language&limit=${fetchLimit}${queryString}${orderParam}`
+    
+    console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey, '[REDACTED]'))
     
     let shows, error
     try {
@@ -81,31 +147,46 @@ export async function fetchShows(options: {
       return { shows: [], error }
     }
     
-    // Step 3: Filter out user shows if needed
+    // Step 3: Apply remaining filters in memory
     let filteredShows = shows || []
+    console.log(`🔍 [fetchShows] Initial shows fetched: ${filteredShows.length}`)
+    
+    // Filter out user shows if needed
     if (options.excludeUserShows && userShowIds.length > 0) {
       const beforeCount = filteredShows.length
       filteredShows = filteredShows.filter((show: any) => !userShowIds.includes(show.imdb_id))
-      console.log(`🔍 [fetchShows] Filtered out user shows: ${beforeCount} -> ${filteredShows.length}`)
+      console.log(`🔍 [fetchShows] After user shows filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Step 4: Apply discovery filtering
-    if (options.showInDiscovery) {
-      filteredShows = filteredShows.filter((show: any) => show.show_in_discovery === true)
-      console.log(`🔍 [fetchShows] After discovery filter: ${filteredShows.length} shows`)
+    // Apply genre filtering
+    if (options.genreIds && options.genreIds.length > 0) {
+      const beforeCount = filteredShows.length
+      filteredShows = filteredShows.filter((show: any) => {
+        const showGenres = show.genre_ids || []
+        return options.genreIds!.some(genreId => showGenres.includes(genreId))
+      })
+      console.log(`🔍 [fetchShows] After genre filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Step 5: Apply sorting
-    if (options.sortBy && filteredShows.length > 0) {
-      filteredShows = applySortingToShows(filteredShows, options.sortBy)
+    // Apply streaming provider filtering
+    if (options.streamerIds && options.streamerIds.length > 0) {
+      const beforeCount = filteredShows.length
+      filteredShows = filteredShows.filter((show: any) => {
+        if (!show.streaming_info?.US) return false
+        const showProviders = show.streaming_info.US.map((p: any) => p.provider_id)
+        return options.streamerIds!.some(streamerId => showProviders.includes(streamerId))
+      })
+      console.log(`🔍 [fetchShows] After streaming filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Step 6: Apply limit after filtering and sorting
-    if (options.limit) {
-      filteredShows = filteredShows.slice(options.offset || 0, (options.offset || 0) + options.limit)
-    }
+    // Step 4: Apply pagination
+    const totalFiltered = filteredShows.length
+    const startIndex = options.offset || 0
+    const endIndex = startIndex + (options.limit || 20)
     
-    console.log(`🔍 [fetchShows] Final result: ${filteredShows.length} shows`)
+    filteredShows = filteredShows.slice(startIndex, endIndex)
+    
+    console.log(`🔍 [fetchShows] Pagination: ${startIndex}-${endIndex} of ${totalFiltered} total, returning ${filteredShows.length} shows`)
     
     // Clean up the shows data with proper fallbacks
     const cleanedShows = filteredShows.map((show: any) => ({
@@ -148,7 +229,20 @@ export async function fetchShows(options: {
     // Add genre names using direct API calls
     const showsWithGenres = await addGenreNames(cleanedShows)
 
-    return { shows: showsWithGenres, error: null }
+    // Return shows with metadata for pagination
+    // For hasMore logic: if we got fewer shows than requested after filtering, there's no more
+    // But if we got exactly what we requested, there might be more
+    const requestedAmount = options.limit || 20
+    const actuallyReturned = showsWithGenres.length
+    const hasMoreData = actuallyReturned === requestedAmount && endIndex < totalFiltered
+    
+    return { 
+      shows: showsWithGenres, 
+      error: null,
+      // Add metadata to help with hasMore logic
+      totalFiltered,
+      hasMore: hasMoreData
+    }
   } catch (error) {
     console.error('Error in fetchShows:', error)
     return { shows: [], error }
@@ -733,4 +827,175 @@ export function formatSeasonInfo(show: Show): { seasonText: string, airDate: str
   })
   
   return { seasonText, airDate, isUpcoming }
+}
+
+/**
+ * Fetch all available genres for filtering
+ */
+export async function fetchGenres(): Promise<{ genres: Array<{ id: number; name: string }>, error: any }> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    }
+
+    const url = `${supabaseUrl}/rest/v1/genres?select=id,name&order=name.asc`
+    const response = await fetch(url, { method: 'GET', headers })
+    
+    if (!response.ok) {
+      console.error('Error fetching genres:', response.status)
+      return { genres: [], error: new Error(`Failed to fetch genres: ${response.status}`) }
+    }
+
+    const genres = await response.json()
+    return { genres: genres || [], error: null }
+  } catch (error) {
+    console.error('Error in fetchGenres:', error)
+    return { genres: [], error }
+  }
+}
+
+/**
+ * Fetch year range from shows data
+ */
+export async function fetchYearRange(): Promise<{ yearRange: [number, number], error: any }> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    }
+
+    // Get min and max years from first_air_date
+    const url = `${supabaseUrl}/rest/v1/shows?select=first_air_date&show_in_discovery=eq.true&first_air_date=not.is.null&order=first_air_date.asc&limit=1`
+    const minResponse = await fetch(url, { method: 'GET', headers })
+    
+    const maxUrl = `${supabaseUrl}/rest/v1/shows?select=first_air_date&show_in_discovery=eq.true&first_air_date=not.is.null&order=first_air_date.desc&limit=1`
+    const maxResponse = await fetch(maxUrl, { method: 'GET', headers })
+    
+    if (!minResponse.ok || !maxResponse.ok) {
+      console.error('Error fetching year range')
+      return { yearRange: [2000, 2024], error: new Error('Failed to fetch year range') }
+    }
+
+    const minData = await minResponse.json()
+    const maxData = await maxResponse.json()
+    
+    const minYear = minData?.[0]?.first_air_date ? new Date(minData[0].first_air_date).getFullYear() : 2000
+    const maxYear = maxData?.[0]?.first_air_date ? new Date(maxData[0].first_air_date).getFullYear() : 2024
+    
+    return { yearRange: [minYear, maxYear], error: null }
+  } catch (error) {
+    console.error('Error in fetchYearRange:', error)
+    return { yearRange: [2000, 2024], error }
+  }
+}
+
+/**
+ * Fetch all available streaming providers from shows data
+ */
+export async function fetchStreamingProviders(): Promise<{ streamers: Array<{ id: number; name: string }>, error: any }> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    }
+
+    // Get all shows with streaming info
+    const url = `${supabaseUrl}/rest/v1/shows?select=streaming_info&show_in_discovery=eq.true&streaming_info=not.is.null`
+    const response = await fetch(url, { method: 'GET', headers })
+    
+    if (!response.ok) {
+      console.error('Error fetching streaming providers:', response.status)
+      return { streamers: [], error: new Error(`Failed to fetch streaming providers: ${response.status}`) }
+    }
+
+    const shows = await response.json()
+    
+    // Extract unique streaming providers
+    const providerMap = new Map<number, string>()
+    
+    shows?.forEach((show: any) => {
+      if (show.streaming_info?.US) {
+        show.streaming_info.US.forEach((provider: any) => {
+          if (provider.provider_id && provider.provider_name) {
+            providerMap.set(provider.provider_id, provider.provider_name)
+          }
+        })
+      }
+    })
+    
+    // Convert to array and sort by name
+    const streamers = Array.from(providerMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    
+    return { streamers, error: null }
+  } catch (error) {
+    console.error('Error in fetchStreamingProviders:', error)
+    return { streamers: [], error }
+  }
+}
+
+/**
+ * Fetch filter options (genres, year range, streaming providers)
+ */
+export async function fetchFilterOptions(): Promise<{
+  options: {
+    genres: Array<{ id: number; name: string }>
+    yearRange: [number, number]
+    streamers: Array<{ id: number; name: string }>
+  }
+  error: any
+}> {
+  try {
+    const [genresResult, yearRangeResult, streamersResult] = await Promise.all([
+      fetchGenres(),
+      fetchYearRange(),
+      fetchStreamingProviders()
+    ])
+
+    if (genresResult.error || yearRangeResult.error || streamersResult.error) {
+      const error = genresResult.error || yearRangeResult.error || streamersResult.error
+      console.error('Error fetching filter options:', error)
+      return {
+        options: {
+          genres: genresResult.genres,
+          yearRange: yearRangeResult.yearRange,
+          streamers: streamersResult.streamers
+        },
+        error
+      }
+    }
+
+    return {
+      options: {
+        genres: genresResult.genres,
+        yearRange: yearRangeResult.yearRange,
+        streamers: streamersResult.streamers
+      },
+      error: null
+    }
+  } catch (error) {
+    console.error('Error in fetchFilterOptions:', error)
+    return {
+      options: {
+        genres: [],
+        yearRange: [2000, 2024],
+        streamers: []
+      },
+      error
+    }
+  }
 }

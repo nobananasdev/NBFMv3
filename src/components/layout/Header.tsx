@@ -48,7 +48,7 @@ export function Header() {
           <div className="flex items-center justify-between h-full px-[10px]">
             <div className="flex items-center">
               <Image
-                src="/nobananasformelogo.png"
+                src="/Nobananasformelogo.svg"
                 alt="No Bananas For Me"
                 width={400}
                 height={200}
