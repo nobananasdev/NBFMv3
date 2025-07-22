@@ -16,10 +16,10 @@ interface SortSelectorProps {
 }
 
 export default function SortSelector({ value, onChange, options, className = '', showFilter = false }: SortSelectorProps) {
-  // Only access filter context if showFilter is true
-  const filterContext = showFilter ? useContext(FilterContext) : null
-  const toggleFilter = filterContext?.toggleFilter || (() => {})
-  const hasActiveFilters = filterContext?.hasActiveFilters || false
+  // Always call useContext hook, but only use it if showFilter is true
+  const filterContext = useContext(FilterContext)
+  const toggleFilter = showFilter ? (filterContext?.toggleFilter || (() => {})) : (() => {})
+  const hasActiveFilters = showFilter ? (filterContext?.hasActiveFilters || false) : false
 
   return (
     <div className={`flex gap-4 ${className}`}>

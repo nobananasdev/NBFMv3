@@ -35,9 +35,13 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   const { user } = useAuth()
   const { refreshCounters, refreshTrigger } = useNavigation()
   
-  // Only use filter context for discover view
-  const filterContext = view === 'discover' ? useContext(FilterContext) : null
-  const filters = filterContext?.filters || {
+  // Always call useContext hook, but only use it for discover view
+  const filterContext = useContext(FilterContext)
+  const filters = view === 'discover' ? (filterContext?.filters || {
+    selectedGenres: [],
+    yearRange: [2000, 2024] as [number, number],
+    selectedStreamers: []
+  }) : {
     selectedGenres: [],
     yearRange: [2000, 2024] as [number, number],
     selectedStreamers: []
@@ -180,7 +184,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
     await fetchShowsData(false)
-  }, [hasMore, fetchShowsData]) // Remove loading to avoid infinite loop
+  }, [hasMore, loading, fetchShowsData])
 
   const refresh = useCallback(async () => {
     setOffset(0)
@@ -192,6 +196,11 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     
     if (!user) {
       console.log('❌ [useShows] No user, cannot update show status')
+      return
+    }
+    
+    if (loading) {
+      console.log('⏳ [useShows] Already loading, skipping action')
       return
     }
     
@@ -223,7 +232,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     } catch (error) {
       console.error('❌ [useShows] Error in handleShowAction:', error)
     }
-  }, [user, view, refreshCounters])
+  }, [user, view, refreshCounters, loading])
 
   // Auto-fetch on mount and when dependencies change
   useEffect(() => {
@@ -231,7 +240,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [view, user?.id, autoFetch]) // Remove sortBy and fetchShowsData to avoid infinite loop
+  }, [view, user?.id, autoFetch, fetchShowsData])
 
   // Handle sort changes separately
   useEffect(() => {
@@ -239,7 +248,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [sortBy]) // Separate effect for sort changes
+  }, [sortBy, autoFetch, fetchShowsData])
 
   // Refetch when filters change (only for discover view)
   useEffect(() => {
@@ -247,7 +256,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
+  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers, view, autoFetch, fetchShowsData])
 
   // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
   useEffect(() => {
@@ -256,7 +265,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [refreshTrigger])
+  }, [refreshTrigger, user, view, fetchShowsData])
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {
