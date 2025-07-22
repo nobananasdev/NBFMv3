@@ -240,7 +240,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [view, user?.id, autoFetch, fetchShowsData])
+  }, [view, user?.id, autoFetch])
 
   // Handle sort changes separately
   useEffect(() => {
@@ -248,7 +248,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [sortBy, autoFetch, fetchShowsData])
+  }, [sortBy])
 
   // Refetch when filters change (only for discover view)
   useEffect(() => {
@@ -256,7 +256,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers, view, autoFetch, fetchShowsData])
+  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
 
   // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
   useEffect(() => {
@@ -265,7 +265,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [refreshTrigger, user, view, fetchShowsData])
+  }, [refreshTrigger])
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {
