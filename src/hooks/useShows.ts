@@ -234,38 +234,33 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     }
   }, [user, view, refreshCounters, loading])
 
-  // Auto-fetch on mount and when dependencies change
+  // Consolidated effect for all data fetching triggers
   useEffect(() => {
     if (autoFetch) {
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [view, user?.id, autoFetch])
+  }, [
+    view, 
+    user?.id, 
+    autoFetch, 
+    sortBy,
+    // Only include filter dependencies for discover view
+    ...(view === 'discover' ? [
+      filters.selectedGenres.join(','),
+      filters.yearRange.join(','),
+      filters.selectedStreamers.join(',')
+    ] : [])
+  ])
 
-  // Handle sort changes separately
-  useEffect(() => {
-    if (autoFetch) {
-      setOffset(0)
-      fetchShowsData(true)
-    }
-  }, [sortBy])
-
-  // Refetch when filters change (only for discover view)
-  useEffect(() => {
-    if (view === 'discover' && autoFetch) {
-      setOffset(0)
-      fetchShowsData(true)
-    }
-  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
-
-  // Refresh data when refreshTrigger changes (skip discover view to prevent flicker)
+  // Separate effect for refresh trigger (skip discover view to prevent flicker)
   useEffect(() => {
     if (user && refreshTrigger > 0 && view !== 'discover') {
       console.log(`🔄 [useShows] Refreshing ${view} view due to trigger:`, refreshTrigger)
       setOffset(0)
       fetchShowsData(true)
     }
-  }, [refreshTrigger])
+  }, [refreshTrigger, user, view])
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {
