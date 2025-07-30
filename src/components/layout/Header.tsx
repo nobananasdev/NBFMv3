@@ -43,7 +43,7 @@ export function Header() {
   return (
     <>
       <header className="mt-5">
-        <div className="container mx-auto px-4 max-w-7xl">
+        <div className="container mx-auto px-4 max-w-5xl">
           <div className="h-16 sm:h-20 lg:h-[91px] rounded-[20px]">
           <div className="flex items-center justify-between h-full px-[10px]">
             <div className="flex items-center">
@@ -52,7 +52,7 @@ export function Header() {
                 alt="No Bananas For Me"
                 width={400}
                 height={200}
-                className="h-16 sm:h-20 lg:h-24 w-auto"
+                className="h-12 sm:h-16 lg:h-20 w-auto"
                 priority
                 quality={100}
                 unoptimized

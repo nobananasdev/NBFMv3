@@ -150,7 +150,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             height={16}
             className="w-3 h-3 sm:w-4 sm:h-4"
           />
-          <span className="font-bold text-[16px] sm:text-[18px] text-[#292929]">
+          <span className="font-bold text-[22px] sm:text-[20px] text-[#292929]">
             {rating.value}
           </span>
         </div>
@@ -182,11 +182,11 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
         </div>
 
         {/* Content - Bottom on mobile, Right on desktop */}
-        <div className="flex-1 flex flex-col justify-between min-h-0">
+        <div className="flex-1 flex flex-col justify-between min-h-0 text-center lg:text-left">
           <div>
             {/* Title and Year */}
             <div className="mb-3 sm:mb-4">
-              <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-[#000000] mb-1">
+              <h3 className="font-bold text-[24px] sm:text-[28px] lg:text-[32px] leading-tight text-[#000000] mb-1">
                 {show.title}
                 {airDate && (
                   <span className="font-normal text-[#7b7b7b] ml-1 sm:ml-2 text-[16px] sm:text-[20px] lg:text-[24px]">
@@ -198,7 +198,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
 
             {/* Genres and Series Info */}
             <div className="mb-4 sm:mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-[12px] sm:text-[14px]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-1 sm:gap-2 text-[12px] sm:text-[14px]">
                 {genreNames.length > 0 && (
                   <span className="font-semibold text-[#000000]">
                     {genreNames.join(', ')}
@@ -252,7 +252,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
 
             {/* Streaming Providers and IMDB */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
-              <div className="flex flex-wrap gap-2 sm:gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3 justify-center lg:justify-start">
                 {streamingProviders.slice(0, 2).map((provider) => (
                   <div
                     key={provider.provider_id}
@@ -295,9 +295,9 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
           {/* Divider Line */}
           <div className="border-t border-[#8e8e8e] mt-6 mb-4 sm:mb-6"></div>
           
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-            {/* Add To Watchlist - Left side, same width as poster */}
-            <div className="w-[180px] sm:w-[200px] lg:w-[240px]">
+          <div className="flex flex-col items-center lg:flex-row lg:justify-between gap-4">
+            {/* Add To Watchlist - Centered on mobile, left on desktop */}
+            <div className="w-full max-w-[280px] lg:w-[240px]">
               {ACTION_BUTTONS
                 .filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status))
                 .map((button) => {

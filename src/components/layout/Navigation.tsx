@@ -26,52 +26,6 @@ export default function Navigation() {
     { id: 'rated', label: 'Rated', count: ratedCount },
   ]
 
-  const getIcon = (itemId: NavigationSection) => {
-    switch (itemId) {
-      case 'discover':
-        return (
-          <Image
-            src="/discovery.svg"
-            alt="Discovery"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-          />
-        )
-      case 'new-seasons':
-        return (
-          <Image
-            src="/new seasons.svg"
-            alt="New Seasons"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-          />
-        )
-      case 'watchlist':
-        return (
-          <Image
-            src="/watchlist.svg"
-            alt="Watchlist"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-          />
-        )
-      case 'rated':
-        return (
-          <Image
-            src="/rated.svg"
-            alt="Rated"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-          />
-        )
-      default:
-        return null
-    }
-  }
 
   const getCountDisplay = (itemId: NavigationSection, count?: number) => {
     if (count !== undefined && count > 0) {
@@ -88,38 +42,48 @@ export default function Navigation() {
       <button
         key={item.id}
         onClick={() => setActiveSection(item.id)}
-        className={`relative flex-1 p-6 rounded-3xl transition-all duration-200 transform hover:translate-y-1 hover:shadow-lg active:translate-y-2
-          /* Desktop styles */
-          hidden sm:block sm:min-h-[140px] ${
+        className={`relative flex-1 p-4 rounded-[15px] transition-all duration-200 transform hover:translate-y-1 hover:shadow-lg active:translate-y-2
+          /* Desktop styles - more compact */
+          hidden sm:block sm:h-[70px] ${
           isActive
             ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
-            : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-md'
+            : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#8e8e8e] shadow-sm hover:shadow-md'
         }`}
       >
-        {/* Top section with icon and count */}
-        <div className="flex justify-between items-start mb-4">
-          <div className={`flex-shrink-0 ${isActive ? 'brightness-0 invert' : ''}`}>
-            {getIcon(item.id)}
+        {/* Compact layout with icon, label and count */}
+        <div className="flex items-center justify-between h-full">
+          {/* Left side: icon and label */}
+          <div className="flex items-center space-x-3">
+            <div className={`flex-shrink-0 w-6 h-6 ${isActive ? 'brightness-0 invert' : ''}`}>
+              <Image
+                src={(() => {
+                  switch (item.id) {
+                    case 'discover': return "/discovery.svg"
+                    case 'new-seasons': return "/new seasons.svg"
+                    case 'watchlist': return "/watchlist.svg"
+                    case 'rated': return "/rated.svg"
+                    default: return ""
+                  }
+                })()}
+                alt={item.label}
+                width={24}
+                height={24}
+                className="w-6 h-6"
+              />
+            </div>
+            <h3 className={`text-[14px] font-bold tracking-[1.54px] ${
+              isActive ? 'text-white' : 'text-[#292929]'
+            }`}>
+              {item.label}
+            </h3>
           </div>
-          <span className={`text-lg font-medium ${
-            isActive ? 'text-[#b0b0b0]' : 'text-gray-400'
+          
+          {/* Right side: count */}
+          <span className={`text-[10px] font-bold tracking-[1.1px] ${
+            isActive ? 'text-[#adadad]' : 'text-[#adadad]'
           }`}>
             {countDisplay}
           </span>
-        </div>
-        
-        {/* Bottom section with title and arrow */}
-        <div className="flex justify-between items-end">
-          <h3 className={`text-xl font-semibold text-left ${
-            isActive ? 'text-white' : 'text-black'
-          }`}>
-            {item.label}
-          </h3>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isActive ? 'bg-white !bg-white' : 'bg-black'
-          }`} style={isActive ? { backgroundColor: '#ffffff' } : { backgroundColor: '#000000' }}>
-            <ArrowUpRightIcon isActive={isActive} />
-          </div>
         </div>
       </button>
     )
@@ -133,24 +97,38 @@ export default function Navigation() {
       <button
         key={`mobile-${item.id}`}
         onClick={() => setActiveSection(item.id)}
-        className={`flex-1 p-3 rounded-2xl transition-all duration-200 sm:hidden ${
+        className={`flex-1 p-3 rounded-[15px] transition-all duration-200 sm:hidden ${
           isActive
             ? 'bg-[#3a3a3a] shadow-md'
-            : 'bg-[#FFFCF5] border border-[#696969] shadow-sm'
+            : 'bg-[#FFFCF5] border border-[#8e8e8e] shadow-sm'
         }`}
       >
         {/* Mobile layout: icon, label, and count in compact vertical arrangement */}
         <div className="flex flex-col items-center space-y-1">
-          <div className={`flex-shrink-0 ${isActive ? 'brightness-0 invert' : ''}`}>
-            {getIcon(item.id)}
+          <div className={`flex-shrink-0 w-6 h-6 ${isActive ? 'brightness-0 invert' : ''}`}>
+            <Image
+              src={(() => {
+                switch (item.id) {
+                  case 'discover': return "/discovery.svg"
+                  case 'new-seasons': return "/new seasons.svg"
+                  case 'watchlist': return "/watchlist.svg"
+                  case 'rated': return "/rated.svg"
+                  default: return ""
+                }
+              })()}
+              alt={item.label}
+              width={24}
+              height={24}
+              className="w-6 h-6"
+            />
           </div>
-          <h3 className={`text-sm font-medium text-center leading-tight ${
-            isActive ? 'text-white' : 'text-black'
+          <h3 className={`text-[12px] font-bold text-center leading-tight tracking-[1.32px] ${
+            isActive ? 'text-white' : 'text-[#292929]'
           }`}>
             {item.label}
           </h3>
-          <span className={`text-xs font-medium ${
-            isActive ? 'text-[#b0b0b0]' : 'text-gray-400'
+          <span className={`text-[10px] font-bold tracking-[1.1px] ${
+            isActive ? 'text-[#adadad]' : 'text-[#adadad]'
           }`}>
             {countDisplay}
           </span>
@@ -161,7 +139,7 @@ export default function Navigation() {
 
   return (
     <nav className="sticky top-0 z-10 mt-5 mb-8 bg-background">
-      <div className="container mx-auto px-4 max-w-7xl">
+      <div className="container mx-auto px-4 max-w-5xl">
         {/* Mobile navigation - single row */}
         <div className="flex gap-2 sm:hidden mb-4">
           {navigationItems.map((item) => renderMobileButton(item))}

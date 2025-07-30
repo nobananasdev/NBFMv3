@@ -48,6 +48,8 @@ export async function fetchShows(options: {
           const userShows = await userShowsResponse.json()
           userShowIds = userShows.map((us: any) => us.imdb_id)
           console.log('🔍 [fetchShows] Found user shows to exclude:', userShowIds.length)
+        } else {
+          console.log('⚠️ [fetchShows] User shows query failed with status:', userShowsResponse.status, 'continuing without exclusion')
         }
       } catch (userShowsError) {
         console.error('⚠️ [fetchShows] Failed to fetch user shows, continuing without exclusion:', userShowsError)
@@ -86,8 +88,8 @@ export async function fetchShows(options: {
         break
       case 'rating':
       case 'by_rating':
-        // Use our_score first, then imdb_rating as fallback, then tmdb_rating
-        orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,tmdb_rating.desc.nullslast'
+        // Use our_score first, then imdb_rating as fallback, then vote_average (tmdb rating)
+        orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,vote_average.desc.nullslast'
         break
       case 'recently_added':
         orderParam = '&order=created_at.desc'
@@ -117,7 +119,7 @@ export async function fetchShows(options: {
     }
     
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,title,show_in_discovery,tmdb_id,original_title,first_air_date,last_air_date,status,imdb_rating,imdb_vote_count,tmdb_rating,tmdb_vote_count,our_score,overview,our_description,poster_path,poster_url,poster_thumb_url,genre_ids,trailer_key,season_count,episode_count,show_type,streaming_info,next_season_date,created_at,updated_at,tmdb_synced_at,needs_sync,is_hidden,is_trash,main_cast,creators,origin_country,original_language&limit=${fetchLimit}${queryString}${orderParam}`
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${queryString}${orderParam}`
     
     console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey, '[REDACTED]'))
     
@@ -188,19 +190,24 @@ export async function fetchShows(options: {
     
     console.log(`🔍 [fetchShows] Pagination: ${startIndex}-${endIndex} of ${totalFiltered} total, returning ${filteredShows.length} shows`)
     
-    // Clean up the shows data with proper fallbacks
+    // Clean up the shows data with proper fallbacks and field mapping
     const cleanedShows = filteredShows.map((show: any) => ({
       ...show,
+      // Map database fields to expected interface fields
+      title: show.name || show.original_name || 'Unknown Title',
+      original_title: show.original_name || show.name,
+      season_count: show.number_of_seasons || 1,
+      episode_count: show.number_of_episodes || 1,
+      show_type: show.type || 'Series',
       // Add required fields as fallbacks
       tmdb_id: show.tmdb_id || 0,
-      original_title: show.original_title || show.title,
       first_air_date: show.first_air_date || '2024-01-01',
       last_air_date: show.last_air_date || null,
       status: show.status || 'Unknown',
       imdb_rating: show.imdb_rating || 0,
       imdb_vote_count: show.imdb_vote_count || 0,
-      tmdb_rating: show.tmdb_rating || 0,
-      tmdb_vote_count: show.tmdb_vote_count || 0,
+      tmdb_rating: show.vote_average || 0,
+      tmdb_vote_count: show.vote_count || 0,
       our_score: show.our_score || 0,
       overview: show.overview || 'No overview',
       our_description: show.our_description || null,
@@ -209,9 +216,6 @@ export async function fetchShows(options: {
       poster_thumb_url: show.poster_thumb_url || null,
       genre_ids: show.genre_ids || [],
       trailer_key: show.trailer_key || null,
-      season_count: show.season_count || 1,
-      episode_count: show.episode_count || 1,
-      show_type: show.show_type || 'Series',
       streaming_info: show.streaming_info || null,
       next_season_date: show.next_season_date || null,
       created_at: show.created_at || '2024-01-01T00:00:00Z',
@@ -324,10 +328,48 @@ export async function fetchUserShows(
       return { shows: [], error: userShowsError }
     }
 
-    let shows = userShows?.map(us => ({
-      ...us.shows,
-      user_status: us.status
-    })).filter(Boolean) || []
+    let shows = userShows?.map(us => {
+      const show = us.shows as any
+      return {
+        ...show,
+        // Map database fields to expected interface fields (same as in fetchShows)
+        title: show.name || show.original_name || 'Unknown Title',
+        original_title: show.original_name || show.name,
+        season_count: show.number_of_seasons || 1,
+        episode_count: show.number_of_episodes || 1,
+        show_type: show.type || 'Series',
+        // Add required fields as fallbacks
+        tmdb_id: show.tmdb_id || 0,
+        first_air_date: show.first_air_date || '2024-01-01',
+        last_air_date: show.last_air_date || null,
+        status: show.status || 'Unknown',
+        imdb_rating: show.imdb_rating || 0,
+        imdb_vote_count: show.imdb_vote_count || 0,
+        tmdb_rating: show.vote_average || 0,
+        tmdb_vote_count: show.vote_count || 0,
+        our_score: show.our_score || 0,
+        overview: show.overview || 'No overview',
+        our_description: show.our_description || null,
+        poster_path: show.poster_path || null,
+        poster_url: show.poster_url || null,
+        poster_thumb_url: show.poster_thumb_url || null,
+        genre_ids: show.genre_ids || [],
+        trailer_key: show.trailer_key || null,
+        streaming_info: show.streaming_info || null,
+        next_season_date: show.next_season_date || null,
+        created_at: show.created_at || '2024-01-01T00:00:00Z',
+        updated_at: show.updated_at || '2024-01-01T00:00:00Z',
+        tmdb_synced_at: show.tmdb_synced_at || null,
+        needs_sync: show.needs_sync || false,
+        is_hidden: show.is_hidden || false,
+        is_trash: show.is_trash || false,
+        main_cast: show.main_cast || [],
+        creators: show.creators || [],
+        origin_country: show.origin_country || [],
+        original_language: show.original_language || 'en',
+        user_status: us.status
+      }
+    }).filter(Boolean) || []
     
     console.log(`🔍 [fetchUserShows] Retrieved ${shows.length} shows before in-memory sorting`)
     
@@ -739,7 +781,47 @@ export async function fetchNewSeasonsShows(
     const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
 
     const shows = userShows
-      .map(us => us.shows as unknown as Show)
+      .map(us => {
+        const show = us.shows as any
+        return {
+          ...show,
+          // Map database fields to expected interface fields (same as in fetchShows)
+          title: show.name || show.original_name || 'Unknown Title',
+          original_title: show.original_name || show.name,
+          season_count: show.number_of_seasons || 1,
+          episode_count: show.number_of_episodes || 1,
+          show_type: show.type || 'Series',
+          // Add required fields as fallbacks
+          tmdb_id: show.tmdb_id || 0,
+          first_air_date: show.first_air_date || '2024-01-01',
+          last_air_date: show.last_air_date || null,
+          status: show.status || 'Unknown',
+          imdb_rating: show.imdb_rating || 0,
+          imdb_vote_count: show.imdb_vote_count || 0,
+          tmdb_rating: show.vote_average || 0,
+          tmdb_vote_count: show.vote_count || 0,
+          our_score: show.our_score || 0,
+          overview: show.overview || 'No overview',
+          our_description: show.our_description || null,
+          poster_path: show.poster_path || null,
+          poster_url: show.poster_url || null,
+          poster_thumb_url: show.poster_thumb_url || null,
+          genre_ids: show.genre_ids || [],
+          trailer_key: show.trailer_key || null,
+          streaming_info: show.streaming_info || null,
+          next_season_date: show.next_season_date || null,
+          created_at: show.created_at || '2024-01-01T00:00:00Z',
+          updated_at: show.updated_at || '2024-01-01T00:00:00Z',
+          tmdb_synced_at: show.tmdb_synced_at || null,
+          needs_sync: show.needs_sync || false,
+          is_hidden: show.is_hidden || false,
+          is_trash: show.is_trash || false,
+          main_cast: show.main_cast || [],
+          creators: show.creators || [],
+          origin_country: show.origin_country || [],
+          original_language: show.original_language || 'en'
+        }
+      })
       .filter(Boolean)
       .filter((show: Show) => {
         if (!show.next_season_date) return false

@@ -179,7 +179,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     } finally {
       setLoading(false)
     }
-  }, [view, user?.id, limit, offset, sortBy, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
+  }, [view, user, loading, limit, offset, sortBy, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
 
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
@@ -234,23 +234,25 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     }
   }, [user, view, refreshCounters, loading])
 
+  // Extract complex expressions for dependency array
+  const selectedGenresKey = filters.selectedGenres.join(',')
+  const yearRangeKey = filters.yearRange.join(',')
+  const selectedStreamersKey = filters.selectedStreamers.join(',')
+
   // Consolidated effect for all data fetching triggers
   useEffect(() => {
     if (autoFetch) {
       setOffset(0)
       fetchShowsData(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     view, 
     user?.id, 
     autoFetch, 
     sortBy,
-    // Only include filter dependencies for discover view
-    ...(view === 'discover' ? [
-      filters.selectedGenres.join(','),
-      filters.yearRange.join(','),
-      filters.selectedStreamers.join(',')
-    ] : [])
+    // Only include filter dependencies for discover view to prevent infinite loops
+    ...(view === 'discover' ? [selectedGenresKey, yearRangeKey, selectedStreamersKey] : [])
   ])
 
   // Separate effect for refresh trigger (skip discover view to prevent flicker)
@@ -260,6 +262,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setOffset(0)
       fetchShowsData(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger, user, view])
 
   // Handle sort change

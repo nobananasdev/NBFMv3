@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useFilter } from '@/contexts/FilterContext'
 
 export default function FilterSidebar() {
@@ -16,6 +16,8 @@ export default function FilterSidebar() {
     hasActiveFilters
   } = useFilter()
 
+  const [isAnimating, setIsAnimating] = useState(false)
+
   // Close sidebar on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -27,6 +29,10 @@ export default function FilterSidebar() {
     if (isFilterOpen) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden' // Prevent background scroll
+      // Trigger animation after component mounts
+      setTimeout(() => setIsAnimating(true), 10)
+    } else {
+      setIsAnimating(false)
     }
 
     return () => {
@@ -64,13 +70,17 @@ export default function FilterSidebar() {
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+      <div
+        className={`absolute inset-0 bg-black transition-opacity duration-300 ease-in-out ${
+          isAnimating ? 'bg-opacity-50' : 'bg-opacity-0'
+        }`}
         onClick={closeFilter}
       />
       
       {/* Sidebar */}
-      <div className="relative bg-white w-80 h-full shadow-xl transform transition-transform duration-300 ease-in-out overflow-y-auto">
+      <div className={`relative bg-white w-80 h-full shadow-xl transform transition-transform duration-300 ease-in-out overflow-y-auto ${
+        isAnimating ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
