@@ -131,7 +131,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             {actionResult.label}
           </div>
           <div className="text-sm text-gray-600">
-            {show.title}
+            {show.name}
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             {posterUrl ? (
               <Image
                 src={posterUrl}
-                alt={show.title}
+                alt={show.name}
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 180px, (max-width: 1024px) 200px, 240px"
@@ -187,7 +187,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
             {/* Title and Year */}
             <div className="mb-3 sm:mb-4">
               <h3 className="font-bold text-[24px] sm:text-[28px] lg:text-[32px] leading-tight text-[#000000] mb-1">
-                {show.title}
+                {show.name}
                 {airDate && (
                   <span className="font-normal text-[#7b7b7b] ml-1 sm:ml-2 text-[16px] sm:text-[20px] lg:text-[24px]">
                     ({airDate})

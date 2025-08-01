@@ -102,7 +102,7 @@ export default function NewSeasonsList({
                   {posterUrl ? (
                     <Image
                       src={posterUrl}
-                      alt={show.title}
+                      alt={show.name}
                       fill
                       className="object-cover"
                       sizes="30px"
@@ -117,7 +117,7 @@ export default function NewSeasonsList({
                 {/* Show Info */}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-[20px] font-bold mb-1 leading-normal text-black truncate" style={{ letterSpacing: '0.6px' }}>
-                    {show.title}
+                    {show.name}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                     <span className={`font-medium ${isUpcoming ? 'text-blue-600' : 'text-green-600'}`}>

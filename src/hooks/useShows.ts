@@ -192,7 +192,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   }, [fetchShowsData])
 
   const handleShowAction = useCallback(async (show: ShowWithGenres, status: ShowStatus) => {
-    console.log('🔄 [useShows] handleShowAction called for:', show.title, 'status:', status, 'view:', view)
+    console.log('🔄 [useShows] handleShowAction called for:', show.name, 'status:', status, 'view:', view)
     
     if (!user) {
       console.log('❌ [useShows] No user, cannot update show status')
@@ -212,7 +212,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       // Import and call the database update function
       const { updateUserShowStatus } = await import('@/lib/shows')
       
-      console.log('🔄 [useShows] Updating database for:', show.title)
+      console.log('🔄 [useShows] Updating database for:', show.name)
       const result = await updateUserShowStatus(user.id, show.imdb_id, status)
       
       if (result.error) {
@@ -220,7 +220,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
         return
       }
       
-      console.log('✅ [useShows] Database updated successfully for:', show.title)
+      console.log('✅ [useShows] Database updated successfully for:', show.name)
       
       // Wait a bit then refresh counters
       setTimeout(async () => {
@@ -228,7 +228,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
         await refreshCounters()
       }, 1000)
       
-      console.log('✅ [useShows] handleShowAction completed for:', show.title)
+      console.log('✅ [useShows] handleShowAction completed for:', show.name)
     } catch (error) {
       console.error('❌ [useShows] Error in handleShowAction:', error)
     }

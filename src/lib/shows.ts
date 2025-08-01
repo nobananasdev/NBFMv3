@@ -119,7 +119,7 @@ export async function fetchShows(options: {
     }
     
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${queryString}${orderParam}`
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${queryString}${orderParam}`
     
     console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey, '[REDACTED]'))
     
@@ -190,24 +190,18 @@ export async function fetchShows(options: {
     
     console.log(`🔍 [fetchShows] Pagination: ${startIndex}-${endIndex} of ${totalFiltered} total, returning ${filteredShows.length} shows`)
     
-    // Clean up the shows data with proper fallbacks and field mapping
+    // Clean up the shows data with proper fallbacks
     const cleanedShows = filteredShows.map((show: any) => ({
       ...show,
-      // Map database fields to expected interface fields
-      title: show.name || show.original_name || 'Unknown Title',
-      original_title: show.original_name || show.name,
-      season_count: show.number_of_seasons || 1,
-      episode_count: show.number_of_episodes || 1,
-      show_type: show.type || 'Series',
       // Add required fields as fallbacks
-      tmdb_id: show.tmdb_id || 0,
+      id: show.id || 0,
       first_air_date: show.first_air_date || '2024-01-01',
       last_air_date: show.last_air_date || null,
       status: show.status || 'Unknown',
       imdb_rating: show.imdb_rating || 0,
       imdb_vote_count: show.imdb_vote_count || 0,
-      tmdb_rating: show.vote_average || 0,
-      tmdb_vote_count: show.vote_count || 0,
+      vote_average: show.vote_average || 0,
+      vote_count: show.vote_count || 0,
       our_score: show.our_score || 0,
       overview: show.overview || 'No overview',
       our_description: show.our_description || null,
@@ -332,21 +326,15 @@ export async function fetchUserShows(
       const show = us.shows as any
       return {
         ...show,
-        // Map database fields to expected interface fields (same as in fetchShows)
-        title: show.name || show.original_name || 'Unknown Title',
-        original_title: show.original_name || show.name,
-        season_count: show.number_of_seasons || 1,
-        episode_count: show.number_of_episodes || 1,
-        show_type: show.type || 'Series',
         // Add required fields as fallbacks
-        tmdb_id: show.tmdb_id || 0,
+        id: show.id || 0,
         first_air_date: show.first_air_date || '2024-01-01',
         last_air_date: show.last_air_date || null,
         status: show.status || 'Unknown',
         imdb_rating: show.imdb_rating || 0,
         imdb_vote_count: show.imdb_vote_count || 0,
-        tmdb_rating: show.vote_average || 0,
-        tmdb_vote_count: show.vote_count || 0,
+        vote_average: show.vote_average || 0,
+        vote_count: show.vote_count || 0,
         our_score: show.our_score || 0,
         overview: show.overview || 'No overview',
         our_description: show.our_description || null,
@@ -380,13 +368,13 @@ export async function fetchUserShows(
         const ratingA = options?.sortBy === 'best_rated'
           ? (a.our_score || 0)
           : options?.sortBy === 'by_rating'
-          ? (a.our_score || a.imdb_rating || a.tmdb_rating || 0)
-          : (a.imdb_rating || a.tmdb_rating || a.our_score || 0)
+          ? (a.our_score || a.imdb_rating || a.vote_average || 0)
+          : (a.imdb_rating || a.vote_average || a.our_score || 0)
         const ratingB = options?.sortBy === 'best_rated'
           ? (b.our_score || 0)
           : options?.sortBy === 'by_rating'
-          ? (b.our_score || b.imdb_rating || b.tmdb_rating || 0)
-          : (b.imdb_rating || b.tmdb_rating || b.our_score || 0)
+          ? (b.our_score || b.imdb_rating || b.vote_average || 0)
+          : (b.imdb_rating || b.vote_average || b.our_score || 0)
         
         return ratingB - ratingA
       })
@@ -472,8 +460,8 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'rating':
       return shows.sort((a, b) => {
-        const ratingA = a.our_score || a.imdb_rating || a.tmdb_rating || 0
-        const ratingB = b.our_score || b.imdb_rating || b.tmdb_rating || 0
+        const ratingA = a.our_score || a.imdb_rating || a.vote_average || 0
+        const ratingB = b.our_score || b.imdb_rating || b.vote_average || 0
         return ratingB - ratingA
       })
     
@@ -494,8 +482,8 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'by_rating':
       return shows.sort((a, b) => {
-        const ratingA = a.imdb_rating || a.tmdb_rating || a.our_score || 0
-        const ratingB = b.imdb_rating || b.tmdb_rating || b.our_score || 0
+        const ratingA = a.imdb_rating || a.vote_average || a.our_score || 0
+        const ratingB = b.imdb_rating || b.vote_average || b.our_score || 0
         return ratingB - ratingA
       })
     
@@ -715,21 +703,21 @@ export function formatAirDate(dateString: string | null): string {
  * Format series information based on show type and season count
  */
 export function formatSeriesInfo(show: Show): string {
-  const { show_type, season_count, status } = show
+  const { type, number_of_seasons, status } = show
 
-  if (show_type === 'Miniseries') {
+  if (type === 'Miniseries') {
     return 'Mini Series'
   }
 
-  if (!season_count || season_count === 0) {
+  if (!number_of_seasons || number_of_seasons === 0) {
     return 'Series'
   }
 
-  if (season_count === 1) {
+  if (number_of_seasons === 1) {
     return `1 season${status ? `, ${status}` : ''}`
   }
 
-  return `${season_count} seasons${status ? `, ${status}` : ''}`
+  return `${number_of_seasons} seasons${status ? `, ${status}` : ''}`
 }
 
 /**
@@ -785,21 +773,15 @@ export async function fetchNewSeasonsShows(
         const show = us.shows as any
         return {
           ...show,
-          // Map database fields to expected interface fields (same as in fetchShows)
-          title: show.name || show.original_name || 'Unknown Title',
-          original_title: show.original_name || show.name,
-          season_count: show.number_of_seasons || 1,
-          episode_count: show.number_of_episodes || 1,
-          show_type: show.type || 'Series',
           // Add required fields as fallbacks
-          tmdb_id: show.tmdb_id || 0,
+          id: show.id || 0,
           first_air_date: show.first_air_date || '2024-01-01',
           last_air_date: show.last_air_date || null,
           status: show.status || 'Unknown',
           imdb_rating: show.imdb_rating || 0,
           imdb_vote_count: show.imdb_vote_count || 0,
-          tmdb_rating: show.vote_average || 0,
-          tmdb_vote_count: show.vote_count || 0,
+          vote_average: show.vote_average || 0,
+          vote_count: show.vote_count || 0,
           our_score: show.our_score || 0,
           overview: show.overview || 'No overview',
           our_description: show.our_description || null,
@@ -893,7 +875,7 @@ export function formatSeasonInfo(show: Show): { seasonText: string, airDate: str
   }
   
   const isUpcoming = nextSeasonDate > currentDate
-  const seasonCount = show.season_count || 0
+  const seasonCount = show.number_of_seasons || 0
   
   let seasonText: string
   if (isUpcoming) {

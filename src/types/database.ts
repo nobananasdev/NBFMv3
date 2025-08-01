@@ -31,9 +31,9 @@ export interface Database {
 export interface Show {
   // Core identifiers
   imdb_id: string // PRIMARY KEY
-  tmdb_id: number | null
-  title: string
-  original_title: string | null
+  id: number | null
+  name: string
+  original_name: string | null
   
   // Dates and status
   first_air_date: string | null // DATE
@@ -43,8 +43,8 @@ export interface Show {
   // Ratings and descriptions
   imdb_rating: number | null // DECIMAL(4,2)
   imdb_vote_count: number | null
-  tmdb_rating: number | null // DECIMAL(4,2)
-  tmdb_vote_count: number | null
+  vote_average: number | null // DECIMAL(4,2)
+  vote_count: number | null
   our_score: number | null // DECIMAL(4,2)
   overview: string | null
   our_description: string | null
@@ -57,9 +57,9 @@ export interface Show {
   trailer_key: string | null
   
   // Series format and streaming
-  season_count: number | null
-  episode_count: number | null
-  show_type: string | null
+  number_of_seasons: number | null
+  number_of_episodes: number | null
+  type: string | null
   streaming_info: StreamingInfo | null
   next_season_date: string | null // DATE
   
