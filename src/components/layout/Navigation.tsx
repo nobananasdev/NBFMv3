@@ -138,7 +138,7 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="sticky top-0 z-10 mt-5 mb-8 bg-background">
+    <nav className="sticky top-0 z-50 mt-5 mb-8 bg-background">
       <div className="container mx-auto px-4 max-w-5xl">
         {/* Mobile navigation - single row */}
         <div className="flex gap-2 sm:hidden mb-4">
