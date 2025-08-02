@@ -42,7 +42,7 @@ export default function Navigation() {
       <button
         key={item.id}
         onClick={() => setActiveSection(item.id)}
-        className={`relative flex-1 p-4 rounded-[15px] transition-all duration-200 transform hover:translate-y-1 hover:shadow-lg active:translate-y-2
+        className={`relative flex-1 p-4 rounded-[15px] transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0
           /* Desktop styles - more compact */
           hidden sm:block sm:h-[70px] ${
           isActive
@@ -97,15 +97,16 @@ export default function Navigation() {
       <button
         key={`mobile-${item.id}`}
         onClick={() => setActiveSection(item.id)}
-        className={`flex-1 p-3 rounded-[15px] transition-all duration-200 sm:hidden ${
+        className={`flex-1 py-2 px-1 rounded-[10px] transition-all duration-200 sm:hidden ${
           isActive
             ? 'bg-[#3a3a3a] shadow-md'
             : 'bg-[#FFFCF5] border border-[#8e8e8e] shadow-sm'
         }`}
       >
-        {/* Mobile layout: icon, label, and count in compact vertical arrangement */}
-        <div className="flex flex-col items-center space-y-1">
-          <div className={`flex-shrink-0 w-6 h-6 ${isActive ? 'brightness-0 invert' : ''}`}>
+        {/* Mobile layout matching Figma design: compact vertical arrangement */}
+        <div className="flex flex-col items-center justify-between h-full space-y-1">
+          {/* Icon at top */}
+          <div className={`flex-shrink-0 w-4 h-4 ${isActive ? 'brightness-0 invert' : ''}`}>
             <Image
               src={(() => {
                 switch (item.id) {
@@ -117,16 +118,20 @@ export default function Navigation() {
                 }
               })()}
               alt={item.label}
-              width={24}
-              height={24}
-              className="w-6 h-6"
+              width={16}
+              height={16}
+              className="w-4 h-4"
             />
           </div>
-          <h3 className={`text-[12px] font-bold text-center leading-tight tracking-[1.32px] ${
+          
+          {/* Label in middle */}
+          <h3 className={`mobile-nav-title sm:text-[10px] font-bold text-center leading-tight tracking-[0.6px] ${
             isActive ? 'text-white' : 'text-[#292929]'
-          }`}>
+          } px-0.5`}>
             {item.label}
           </h3>
+          
+          {/* Count at bottom */}
           <span className={`text-[10px] font-bold tracking-[1.1px] ${
             isActive ? 'text-[#adadad]' : 'text-[#adadad]'
           }`}>
@@ -138,10 +143,10 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 mt-5 mb-8 bg-background">
-      <div className="container mx-auto px-4 max-w-5xl">
+    <nav className="sticky top-0 z-50 mt-3 sm:mt-5 mb-6 sm:mb-8 bg-background">
+      <div className="container mx-auto px-3 sm:px-4 max-w-5xl">
         {/* Mobile navigation - single row */}
-        <div className="flex gap-2 sm:hidden mb-4">
+        <div className="flex gap-1 sm:hidden mb-4">
           {navigationItems.map((item) => renderMobileButton(item))}
         </div>
         

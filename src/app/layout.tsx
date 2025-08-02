@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'No Bananas For Me',
   description: 'Track your TV shows and movies without the bananas',
+  icons: {
+    icon: '/Favicon.png',
+  },
 }
 
 export default function RootLayout({

@@ -80,41 +80,41 @@
 }
 
 @layer utilities {
-  /* Mobile font size adjustments - 4px smaller for all text sizes */
+  /* Mobile font size adjustments - more reasonable sizes for readability */
   @media (max-width: 768px) {
-    .text-xs { font-size: 8px !important; }      /* 12px -> 8px */
-    .text-sm { font-size: 10px !important; }     /* 14px -> 10px */
-    .text-base { font-size: 12px !important; }   /* 16px -> 12px */
-    .text-lg { font-size: 14px !important; }     /* 18px -> 14px */
-    .text-xl { font-size: 16px !important; }     /* 20px -> 16px */
-    .text-2xl { font-size: 20px !important; }    /* 24px -> 20px */
-    .text-3xl { font-size: 26px !important; }    /* 30px -> 26px */
-    .text-4xl { font-size: 32px !important; }    /* 36px -> 32px */
-    .text-5xl { font-size: 44px !important; }    /* 48px -> 44px */
-    .text-6xl { font-size: 56px !important; }    /* 60px -> 56px */
-    .text-7xl { font-size: 68px !important; }    /* 72px -> 68px */
-    .text-8xl { font-size: 92px !important; }    /* 96px -> 92px */
-    .text-9xl { font-size: 124px !important; }   /* 128px -> 124px */
+    .text-xs { font-size: 10px !important; }     /* 12px -> 10px (was 8px) */
+    .text-sm { font-size: 12px !important; }     /* 14px -> 12px (was 10px) */
+    .text-base { font-size: 14px !important; }   /* 16px -> 14px (was 12px) */
+    .text-lg { font-size: 16px !important; }     /* 18px -> 16px (was 14px) */
+    .text-xl { font-size: 18px !important; }     /* 20px -> 18px (was 16px) */
+    .text-2xl { font-size: 22px !important; }    /* 24px -> 22px (was 20px) */
+    .text-3xl { font-size: 28px !important; }    /* 30px -> 28px (was 26px) */
+    .text-4xl { font-size: 34px !important; }    /* 36px -> 34px (was 32px) */
+    .text-5xl { font-size: 46px !important; }    /* 48px -> 46px (was 44px) */
+    .text-6xl { font-size: 58px !important; }    /* 60px -> 58px (was 56px) */
+    .text-7xl { font-size: 70px !important; }    /* 72px -> 70px (was 68px) */
+    .text-8xl { font-size: 94px !important; }    /* 96px -> 94px (was 92px) */
+    .text-9xl { font-size: 126px !important; }   /* 128px -> 126px (was 124px) */
     
     /* Also apply to elements without explicit text size classes */
-    body { font-size: 12px !important; }         /* Default 16px -> 12px */
-    h1 { font-size: 28px !important; }           /* Default 32px -> 28px */
-    h2 { font-size: 20px !important; }           /* Default 24px -> 20px */
-    h3 { font-size: 16px !important; }           /* Default 20px -> 16px */
-    h4 { font-size: 14px !important; }           /* Default 18px -> 14px */
-    h5 { font-size: 12px !important; }           /* Default 16px -> 12px */
-    h6 { font-size: 10px !important; }           /* Default 14px -> 10px */
-    p { font-size: 12px !important; }            /* Default 16px -> 12px */
+    body { font-size: 14px !important; }         /* Default 16px -> 14px (was 12px) */
+    h1 { font-size: 30px !important; }           /* Default 32px -> 30px (was 28px) */
+    h2 { font-size: 22px !important; }           /* Default 24px -> 22px (was 20px) */
+    h3 { font-size: 18px !important; }           /* Default 20px -> 18px (was 16px) */
+    h4 { font-size: 16px !important; }           /* Default 18px -> 16px (was 14px) */
+    h5 { font-size: 14px !important; }           /* Default 16px -> 14px (was 12px) */
+    h6 { font-size: 12px !important; }           /* Default 14px -> 12px (was 10px) */
+    p { font-size: 14px !important; }            /* Default 16px -> 14px (was 12px) */
     span { font-size: inherit !important; }      /* Inherit from parent */
     div { font-size: inherit !important; }       /* Inherit from parent */
-    input { font-size: 12px !important; }        /* Default 16px -> 12px */
-    label { font-size: 10px !important; }        /* Default 14px -> 10px */
+    input { font-size: 14px !important; }        /* Default 16px -> 14px (was 12px) */
+    label { font-size: 12px !important; }        /* Default 14px -> 12px (was 10px) */
     
     /* Button size adjustments for mobile */
     button {
-      font-size: 12px !important;                /* Default 16px -> 12px */
-      padding: 6px 12px !important;              /* Reduce padding */
-      min-height: 32px !important;               /* Reduce minimum height */
+      font-size: 14px !important;                /* Default 16px -> 14px (was 12px) */
+      padding: 8px 14px !important;              /* Slightly larger padding */
+      min-height: 36px !important;               /* Larger minimum height for touch */
     }
     
     /* Tailwind button padding classes - make smaller on mobile */
@@ -139,5 +139,9 @@
     .h-10 { height: 36px !important; }           /* 40px -> 36px */
     .h-11 { height: 40px !important; }           /* 44px -> 40px */
     .h-12 { height: 44px !important; }           /* 48px -> 44px */
+    
+    /* Mobile navigation button title specific override */
+    .mobile-nav-title { font-size: 14px !important; }       /* Force mobile navigation titles to 14px */
+    nav h3.mobile-nav-title { font-size: 14px !important; } /* Extra specificity for mobile nav titles */
   }
 }
