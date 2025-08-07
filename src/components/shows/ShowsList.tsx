@@ -139,7 +139,7 @@ export default function ShowsList({
           </div>
           <h3 className="text-lg font-semibold mb-2">Something went wrong</h3>
           <p className="text-gray-600 mb-4">
-            We couldn't load the shows. Please try again later.
+            We couldn&apos;t load the shows. Please try again later.
           </p>
           <button 
             onClick={() => window.location.reload()}
