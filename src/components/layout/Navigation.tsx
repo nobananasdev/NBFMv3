@@ -28,8 +28,8 @@ export default function Navigation() {
 
 
   const getCountDisplay = (itemId: NavigationSection, count?: number) => {
-    if (count !== undefined && count > 0) {
-      return count > 999 ? '999+' : count.toString()
+    if (typeof count === 'number' && count >= 0) {
+      return new Intl.NumberFormat('en-US').format(count)
     }
     return '0'
   }
@@ -79,9 +79,12 @@ export default function Navigation() {
           </div>
           
           {/* Right side: count */}
-          <span className={`text-[10px] font-bold tracking-[1.1px] ${
-            isActive ? 'text-[#adadad]' : 'text-[#adadad]'
-          }`}>
+          <span
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+            className={`text-[10px] font-bold tracking-[1.1px] ${
+              isActive ? 'text-[#adadad]' : 'text-[#adadad]'
+            }`}
+          >
             {countDisplay}
           </span>
         </div>
@@ -132,9 +135,12 @@ export default function Navigation() {
           </h3>
           
           {/* Count at bottom */}
-          <span className={`text-[10px] font-bold tracking-[1.1px] ${
-            isActive ? 'text-[#adadad]' : 'text-[#adadad]'
-          }`}>
+          <span
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+            className={`text-[10px] font-bold tracking-[1.1px] ${
+              isActive ? 'text-[#adadad]' : 'text-[#adadad]'
+            }`}
+          >
             {countDisplay}
           </span>
         </div>
