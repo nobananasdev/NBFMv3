@@ -14,8 +14,32 @@ const RATED_SORT_OPTIONS = [
 
 export function RatedSection() {
   const { user } = useAuth()
-  const { shows, loading, error, hasMore, fetchMore, handleShowAction, sortBy, setSortBy } = useAllRatedShows(20)
+  const {
+    shows,
+    loading,
+    error,
+    hasMore,
+    fetchMore,
+    handleShowAction,
+    sortBy,
+    setSortBy,
+    preloadedShows,
+    isPreloading,
+    preloadNext
+  } = useAllRatedShows(20)
   const observerRef = useRef<HTMLDivElement>(null)
+  const preloadObserverRef = useRef<HTMLDivElement>(null)
+
+  // Preload trigger
+  const handlePreloadObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries
+      if (target.isIntersecting && hasMore && !loading && !isPreloading) {
+        preloadNext()
+      }
+    },
+    [hasMore, loading, isPreloading, preloadNext]
+  )
 
   // Infinite scroll implementation
   const handleObserver = useCallback(
@@ -27,6 +51,21 @@ export function RatedSection() {
     },
     [hasMore, loading, fetchMore]
   )
+
+  // Preload observer
+  useEffect(() => {
+    const element = preloadObserverRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(handlePreloadObserver, {
+      threshold: 0.1,
+      rootMargin: '600px'
+    })
+
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [handlePreloadObserver])
 
   useEffect(() => {
     const element = observerRef.current
@@ -77,12 +116,37 @@ export function RatedSection() {
             emptyMessage="You haven't rated any shows yet. Start rating in Discover!"
           />
 
+          {/* Preload Trigger */}
+          {hasMore && shows.length > 10 && (
+            <div
+              ref={preloadObserverRef}
+              className="h-1 w-full"
+              style={{
+                position: 'relative',
+                top: '-30vh'
+              }}
+            />
+          )}
+
           {/* Infinite Scroll Trigger */}
           {hasMore && (
             <div ref={observerRef} className="text-center py-8">
               {loading && (
-                <div className="flex justify-center">
+                <div className="flex flex-col items-center space-y-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="text-sm text-gray-500">Loading more shows...</div>
+                </div>
+              )}
+              {!loading && isPreloading && (
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="animate-pulse h-2 w-32 bg-blue-200 rounded"></div>
+                  <div className="text-xs text-gray-400">Preparing next shows...</div>
+                </div>
+              )}
+              {!loading && !isPreloading && preloadedShows.length > 0 && (
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="h-2 w-32 bg-green-200 rounded"></div>
+                  <div className="text-xs text-green-600">Next shows ready!</div>
                 </div>
               )}
             </div>

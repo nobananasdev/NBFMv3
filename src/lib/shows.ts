@@ -21,7 +21,7 @@ export async function fetchShows(options: {
   genreIds?: number[]
   yearRange?: [number, number]
   streamerIds?: number[]
-}): Promise<{ shows: ShowWithGenres[], error: any, totalFiltered?: number, hasMore?: boolean }> {
+}): Promise<{ shows: ShowWithGenres[], error: any, totalFiltered?: number, hasMore?: boolean, rawFetched: number, nextOffset: number }> {
   try {
     console.log('🔍 [fetchShows] Fetching shows with options:', options)
     
@@ -103,23 +103,25 @@ export async function fetchShows(options: {
         break
     }
     
-    // Calculate fetch limit - balance between having enough content and fast loading
-    // We need to fetch more than requested to account for filtering
+    // Calculate fetch limit - for infinite scroll, only fetch what we need plus small buffer
     const baseLimit = options.limit || 20
-    let fetchLimit = Math.max(baseLimit * 15, 500) // Fetch 15x more to account for filtering
+    let fetchLimit = baseLimit
     
-    // If we're excluding user shows and there are many, increase the limit further
-    if (options.excludeUserShows && userShowIds.length > 50) {
-      fetchLimit = Math.max(baseLimit * 25, 800)
+    // Add small buffer only for filtering, not massive over-fetch
+    if (options.excludeUserShows && userShowIds.length > 0) {
+      // Add 50% buffer for user show filtering
+      fetchLimit = Math.ceil(baseLimit * 1.5)
     }
     
-    // For discovery view with offset (infinite scroll), fetch more to ensure we have content
-    if (options.showInDiscovery && (options.offset || 0) > 0) {
-      fetchLimit = Math.max(baseLimit * 30, 1000)
+    // Add small buffer for genre/streaming filtering
+    if (options.genreIds?.length || options.streamerIds?.length) {
+      fetchLimit = Math.ceil(fetchLimit * 1.3)
     }
     
+    // Add offset to query for proper pagination
+    const offsetParam = (options.offset && options.offset > 0) ? `&offset=${options.offset}` : ''
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${queryString}${orderParam}`
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${offsetParam}${queryString}${orderParam}`
     
     console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey, '[REDACTED]'))
     
@@ -143,10 +145,11 @@ export async function fetchShows(options: {
       error = catchError
       shows = null
     }
+    const rawFetched = Array.isArray(shows) ? shows.length : 0
 
     if (error) {
       console.error('Error fetching shows:', error)
-      return { shows: [], error }
+      return { shows: [], error, totalFiltered: 0, hasMore: false, rawFetched: 0, nextOffset: (options.offset || 0) }
     }
     
     // Step 3: Apply remaining filters in memory
@@ -181,14 +184,16 @@ export async function fetchShows(options: {
       console.log(`🔍 [fetchShows] After streaming filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Step 4: Apply pagination
+    // Step 4: Apply final limit (since we already used offset in query)
     const totalFiltered = filteredShows.length
-    const startIndex = options.offset || 0
-    const endIndex = startIndex + (options.limit || 20)
+    const requestedLimit = options.limit || 20
     
-    filteredShows = filteredShows.slice(startIndex, endIndex)
+    // Only slice if we got more than requested (due to filtering buffer)
+    if (filteredShows.length > requestedLimit) {
+      filteredShows = filteredShows.slice(0, requestedLimit)
+    }
     
-    console.log(`🔍 [fetchShows] Pagination: ${startIndex}-${endIndex} of ${totalFiltered} total, returning ${filteredShows.length} shows`)
+    console.log(`🔍 [fetchShows] Final result: ${filteredShows.length} shows (requested: ${requestedLimit})`)
     
     // Clean up the shows data with proper fallbacks
     const cleanedShows = filteredShows.map((show: any) => ({
@@ -228,22 +233,22 @@ export async function fetchShows(options: {
     const showsWithGenres = await addGenreNames(cleanedShows)
 
     // Return shows with metadata for pagination
-    // For hasMore logic: if we got fewer shows than requested after filtering, there's no more
-    // But if we got exactly what we requested, there might be more
+    // Use rawFetched and fetchLimit to determine if there might be more data on the server
     const requestedAmount = options.limit || 20
-    const actuallyReturned = showsWithGenres.length
-    const hasMoreData = actuallyReturned === requestedAmount && endIndex < totalFiltered
-    
-    return { 
-      shows: showsWithGenres, 
+    const hasMoreData = rawFetched === fetchLimit
+    const nextOffset = (options.offset || 0) + rawFetched
+
+    return {
+      shows: showsWithGenres,
       error: null,
-      // Add metadata to help with hasMore logic
       totalFiltered,
-      hasMore: hasMoreData
+      hasMore: hasMoreData,
+      rawFetched,
+      nextOffset
     }
   } catch (error) {
     console.error('Error in fetchShows:', error)
-    return { shows: [], error }
+    return { shows: [], error, totalFiltered: 0, hasMore: false, rawFetched: 0, nextOffset: (options.offset || 0) }
   }
 }
 

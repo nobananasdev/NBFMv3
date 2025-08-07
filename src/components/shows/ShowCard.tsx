@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import Image from 'next/image'
 import { ShowWithGenres } from '@/lib/shows'
 import { ShowStatus } from '@/types/database'
@@ -56,13 +56,17 @@ const ACTION_BUTTONS = [
   }
 ]
 
-export default function ShowCard({ show, onAction, hiddenActions = [], showActions = true }: ShowCardProps) {
+function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = true }: ShowCardProps) {
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
   const [actionResult, setActionResult] = useState<{
     status: ShowStatus
     label: string
   } | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [shouldFadeOut, setShouldFadeOut] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [shouldFadeOutSuccess, setShouldFadeOutSuccess] = useState(false)
 
   const posterUrl = getPosterUrl(show)
   const streamingProviders = filterStreamingProviders(show)
@@ -87,9 +91,13 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
       return
     }
 
-    if (isProcessing) return
+    if (isProcessing || isAnimating) return
 
     setIsProcessing(true)
+    setIsAnimating(true)
+
+    // Start fade out animation
+    setShouldFadeOut(true)
 
     try {
       const { error } = await updateUserShowStatus(user.id, show.imdb_id, status)
@@ -97,23 +105,39 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
       if (error) {
         console.error('Error updating show status:', error)
         alert('Something went wrong. Please try again.')
+        setShouldFadeOut(false)
+        setIsAnimating(false)
+        setIsProcessing(false)
         return
       }
 
       const button = ACTION_BUTTONS.find(btn => btn.status === status)
       if (button) {
-        setActionResult({
-          status,
-          label: button.successLabel
-        })
-
+        // Wait for fade out animation to complete before showing success
         setTimeout(() => {
-          onAction?.(show, status)
-        }, 1500)
+          setActionResult({
+            status,
+            label: button.successLabel
+          })
+          setShouldFadeOut(false)
+          setShowSuccessMessage(true)
+          
+          // Start fading out success message after showing it
+          setTimeout(() => {
+            setShouldFadeOutSuccess(true)
+            
+            // Remove card completely after success message fade out
+            setTimeout(() => {
+              onAction?.(show, status)
+            }, 400) // Wait for success fade out animation
+          }, 1200) // Show success message for 1.2 seconds
+        }, 300) // Match the CSS transition duration
       }
     } catch (error) {
       console.error('Error in handleAction:', error)
       alert('Something went wrong. Please try again.')
+      setShouldFadeOut(false)
+      setIsAnimating(false)
     } finally {
       setIsProcessing(false)
     }
@@ -125,7 +149,13 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
 
   if (actionResult) {
     return (
-      <div className="bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center min-h-[400px]">
+      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center min-h-[400px] transition-all duration-400 ease-in-out ${
+        showSuccessMessage && !shouldFadeOutSuccess
+          ? 'opacity-100 scale-100 animate-success-bounce'
+          : shouldFadeOutSuccess
+            ? 'opacity-0 scale-95 transform -translate-y-4'
+            : 'opacity-0 scale-95'
+      }`}>
         <div className="text-center">
           <div className="text-2xl font-bold text-green-600 mb-2">
             {actionResult.label}
@@ -139,7 +169,9 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
   }
 
   return (
-    <div className="bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative">
+    <div className={`cv-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-all duration-300 ease-in-out ${
+      shouldFadeOut ? 'opacity-0 scale-95 transform' : 'opacity-100 scale-100'
+    }`}>
       {/* Rating Badge - Top Right */}
       {rating && (
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-[#f4f4f4] border border-[#8e8e8e] rounded-[15px] sm:rounded-[20px] px-2 py-1 sm:px-3 sm:py-1 flex items-center gap-1 sm:gap-2 z-10">
@@ -307,7 +339,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''} w-full`}
+                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''} w-full`}
                     >
                       <Image
                         src={button.icon}
@@ -336,7 +368,7 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <Image
                         src={button.icon}
@@ -359,3 +391,24 @@ export default function ShowCard({ show, onAction, hiddenActions = [], showActio
     </div>
   )
 }
+
+function arraysEqual(a: ShowStatus[] = [], b: ShowStatus[] = []) {
+  if (a === b) return true
+  if (!a || !b) return false
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+function arePropsEqual(prev: ShowCardProps, next: ShowCardProps) {
+  return (
+    prev.show === next.show &&
+    prev.showActions === next.showActions &&
+    arraysEqual(prev.hiddenActions, next.hiddenActions) &&
+    prev.onAction === next.onAction
+  )
+}
+
+export default memo(ShowCardComponent, arePropsEqual)

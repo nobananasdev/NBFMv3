@@ -29,9 +29,17 @@ interface UseShowsReturn {
   handleShowAction: (show: ShowWithGenres, status: ShowStatus) => void
   sortBy: SortOption
   setSortBy: (sort: SortOption) => void
+  preloadedShows: ShowWithGenres[]
+  isPreloading: boolean
+  preloadNext: () => Promise<void>
 }
 
-export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSortBy }: UseShowsOptions): UseShowsReturn {
+export function useShows({
+  view,
+  limit = 20,
+  autoFetch = true,
+  sortBy: initialSortBy
+}: UseShowsOptions): UseShowsReturn {
   const { user } = useAuth()
   const { refreshCounters, refreshTrigger } = useNavigation()
   
@@ -52,6 +60,22 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
   const [sortBy, setSortBy] = useState<SortOption>(initialSortBy || getDefaultSortForView(view))
+  const [preloadedShows, setPreloadedShows] = useState<ShowWithGenres[]>([])
+  const [isPreloading, setIsPreloading] = useState(false)
+  const [serverOffset, setServerOffset] = useState(0)
+  const [preloadedNextOffset, setPreloadedNextOffset] = useState<number | null>(null)
+  const [preloadedHasMore, setPreloadedHasMore] = useState<boolean | null>(null)
+
+  // Ensure we never accumulate duplicate imdb_id entries when appending pages
+  const dedupeByImdb = useCallback((items: ShowWithGenres[]) => {
+    const map = new Map<string, ShowWithGenres>()
+    for (const s of items) {
+      if (s?.imdb_id && !map.has(s.imdb_id)) {
+        map.set(s.imdb_id, s)
+      }
+    }
+    return Array.from(map.values())
+  }, [])
 
   function getDefaultSortForView(viewType: ShowsViewType): SortOption {
     switch (viewType) {
@@ -68,20 +92,40 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     }
   }
 
-  const fetchShowsData = useCallback(async (reset = false, overrideSortBy?: SortOption) => {
-    if (loading) return
+  const fetchShowsData = useCallback(async (reset = false, overrideSortBy?: SortOption, isPreload = false) => {
+    if (loading && !isPreload) return
     
-    setLoading(true)
-    setError(null)
+    if (isPreload) {
+      setIsPreloading(true)
+    } else {
+      setLoading(true)
+      setError(null)
+    }
 
     try {
       let result: { shows: ShowWithGenres[], error: any, hasMore?: boolean }
 
-      const currentOffset = reset ? 0 : offset
+      // Calculate correct offset for this request
+      let currentOffset: number
+      if (view === 'discover') {
+        currentOffset = reset ? 0 : serverOffset
+      } else {
+        if (reset) {
+          currentOffset = 0
+        } else if (isPreload) {
+          // For preloading, use the next offset (current shows + preloaded shows)
+          currentOffset = shows.length + preloadedShows.length
+        } else {
+          // For regular infinite scroll, if we have preloaded shows, we need to account for them
+          // Otherwise, just use current shows length
+          currentOffset = shows.length + preloadedShows.length
+        }
+      }
+      
       const effectiveSortBy = overrideSortBy || sortBy
       
-      // For "by_rating" sort, we need all shows for proper grouping
-      const adjustedLimit = effectiveSortBy === 'by_rating' ? 1000 : limit
+      // For "by_rating" sort, we need all shows for proper grouping - but only on first load
+      const adjustedLimit = (effectiveSortBy === 'by_rating' && currentOffset === 0) ? 1000 : limit
       
       const options = {
         limit: adjustedLimit,
@@ -91,7 +135,9 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
         userId: user?.id
       }
       
-      console.log('🔍 [useShows] Fetch options:', { view, effectiveSortBy, limit: adjustedLimit, offset: currentOffset })
+      console.log(`🔍 [useShows] Fetch options:`, {
+        view, effectiveSortBy, limit: adjustedLimit, offset: currentOffset, isPreload
+      })
 
       if (view === 'discover') {
         result = await fetchShows({
@@ -153,22 +199,59 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
         setHasMore(false)
       } else {
         if (reset) {
-          setShows(result.shows)
-          setOffset(result.shows.length)
+          setShows(dedupeByImdb(result.shows))
+          setPreloadedShows([]) // Clear preloaded shows on reset
+          // Update server offset for discover view
+          if (view === 'discover' && (result as any).nextOffset !== undefined) {
+            setServerOffset((result as any).nextOffset)
+          }
+        } else if (isPreload) {
+          // Store preloaded shows separately
+          console.log(`🔍 [useShows] Preloaded ${result.shows.length} shows`)
+          setPreloadedShows(result.shows)
+          // Track next offset and hasMore for the preloaded batch
+          if (view === 'discover') {
+            setPreloadedNextOffset((result as any).nextOffset ?? null)
+            setPreloadedHasMore((result as any).hasMore ?? null)
+          }
         } else {
-          setShows(prev => [...prev, ...result.shows])
-          setOffset(prev => prev + result.shows.length)
+          // Use preloaded shows if available, otherwise use fetched shows
+          let newShows: ShowWithGenres[]
+          
+          if (preloadedShows.length > 0) {
+            console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows`)
+            newShows = preloadedShows
+            setPreloadedShows([]) // Clear used preloaded shows
+            // Advance server offset using preloaded metadata
+            if (view === 'discover') {
+              if (preloadedNextOffset != null) {
+                setServerOffset(preloadedNextOffset)
+                setPreloadedNextOffset(null)
+              } else if ((result as any).nextOffset !== undefined) {
+                setServerOffset((result as any).nextOffset)
+              }
+            }
+          } else {
+            // Use fetched shows directly
+            newShows = result.shows
+            console.log(`🔍 [useShows] Adding ${newShows.length} new shows`)
+            if (view === 'discover' && (result as any).nextOffset !== undefined) {
+              setServerOffset((result as any).nextOffset)
+            }
+          }
+          
+          setShows(prev => dedupeByImdb([...prev, ...newShows]))
         }
         
-        // Use hasMore from result if available (for discover view), otherwise fallback to length check
-        if (view === 'discover' && result.hasMore !== undefined) {
-          setHasMore(result.hasMore)
-          console.log('🔍 [useShows] Using hasMore from fetchShows result:', result.hasMore)
+        // Simplified hasMore logic
+        if (view === 'discover' && (result as any).hasMore !== undefined) {
+          setHasMore((result as any).hasMore)
+          console.log('🔍 [useShows] Using hasMore from fetchShows result:', (result as any).hasMore)
         } else {
-          // Fallback for other views - check if we got fewer shows than requested
+          // For other views - check if we got fewer shows than requested
           const hasMoreShows = result.shows.length === (adjustedLimit === 1000 ? limit : adjustedLimit)
           setHasMore(hasMoreShows)
-          console.log('🔍 [useShows] Using fallback hasMore logic:', hasMoreShows, 'got', result.shows.length, 'expected', adjustedLimit === 1000 ? limit : adjustedLimit)
+          console.log('🔍 [useShows] Fallback hasMore logic:', hasMoreShows, 'got', result.shows.length, 'expected', adjustedLimit === 1000 ? limit : adjustedLimit)
         }
       }
     } catch (err) {
@@ -177,17 +260,45 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
       setShows([])
       setHasMore(false)
     } finally {
-      setLoading(false)
+      if (isPreload) {
+        setIsPreloading(false)
+      } else {
+        setLoading(false)
+      }
     }
-  }, [view, user, loading, limit, offset, sortBy, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
+  }, [view, user, loading, limit, serverOffset, sortBy, shows, preloadedShows, preloadedNextOffset, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
 
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
+
+    // If we already preloaded next batch for discover, consume it without fetching
+    if (view === 'discover' && preloadedShows.length > 0) {
+      setShows(prev => dedupeByImdb([...prev, ...preloadedShows]))
+      setPreloadedShows([])
+      if (preloadedNextOffset != null) {
+        setServerOffset(preloadedNextOffset)
+        setPreloadedNextOffset(null)
+      }
+      if (preloadedHasMore != null) {
+        setHasMore(preloadedHasMore)
+        setPreloadedHasMore(null)
+      }
+      return
+    }
+
     await fetchShowsData(false)
-  }, [hasMore, loading, fetchShowsData])
+  }, [hasMore, loading, view, preloadedShows.length, preloadedNextOffset, preloadedHasMore, fetchShowsData])
+
+  // Background preloading function
+  const preloadNext = useCallback(async () => {
+    if (!hasMore || loading || isPreloading || preloadedShows.length > 0) return
+    
+    console.log('🔍 [useShows] Starting background preload')
+    await fetchShowsData(false, undefined, true)
+  }, [hasMore, loading, isPreloading, preloadedShows.length, fetchShowsData])
 
   const refresh = useCallback(async () => {
-    setOffset(0)
+    setServerOffset(0)
     await fetchShowsData(true)
   }, [fetchShowsData])
 
@@ -242,7 +353,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   // Consolidated effect for all data fetching triggers
   useEffect(() => {
     if (autoFetch) {
-      setOffset(0)
+      setServerOffset(0)
       fetchShowsData(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,7 +370,7 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
   useEffect(() => {
     if (user && refreshTrigger > 0 && view !== 'discover') {
       console.log(`🔄 [useShows] Refreshing ${view} view due to trigger:`, refreshTrigger)
-      setOffset(0)
+      setServerOffset(0)
       fetchShowsData(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,9 +378,13 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {
+    console.log('🔄 [useShows] Sort change requested:', newSort)
     setSortBy(newSort)
-    setOffset(0)
-    fetchShowsData(true, newSort)
+    setServerOffset(0)
+    // Use a slight delay to ensure state updates are processed
+    setTimeout(() => {
+      fetchShowsData(true, newSort)
+    }, 0)
   }, [fetchShowsData])
 
   return {
@@ -281,31 +396,52 @@ export function useShows({ view, limit = 20, autoFetch = true, sortBy: initialSo
     refresh,
     handleShowAction,
     sortBy,
-    setSortBy: handleSortChange
+    setSortBy: handleSortChange,
+    preloadedShows,
+    isPreloading,
+    preloadNext
   }
 }
 
 // Helper hook for specific views
 export function useDiscoverShows(limit?: number) {
-  return useShows({ view: 'discover', limit })
+  return useShows({
+    view: 'discover',
+    limit
+  })
 }
 
 export function useWatchlistShows(limit?: number) {
-  return useShows({ view: 'watchlist', limit })
+  return useShows({
+    view: 'watchlist',
+    limit
+  })
 }
 
 export function useLikedShows(limit?: number) {
-  return useShows({ view: 'liked_it', limit })
+  return useShows({
+    view: 'liked_it',
+    limit
+  })
 }
 
 export function useLovedShows(limit?: number) {
-  return useShows({ view: 'loved_it', limit })
+  return useShows({
+    view: 'loved_it',
+    limit
+  })
 }
 
 export function useAllRatedShows(limit?: number) {
-  return useShows({ view: 'all_rated', limit })
+  return useShows({
+    view: 'all_rated',
+    limit
+  })
 }
 
 export function useNewSeasonsShows(limit?: number) {
-  return useShows({ view: 'new_seasons', limit })
+  return useShows({
+    view: 'new_seasons',
+    limit
+  })
 }

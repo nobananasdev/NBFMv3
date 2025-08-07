@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ShowCard from './ShowCard'
 import { ShowWithGenres } from '@/lib/shows'
 import { ShowStatus } from '@/types/database'
@@ -122,19 +122,71 @@ export default function ShowsList({
     )
   }
 
+  // Window-based virtualization to keep DOM size small and scrolling fast
+
+  // Lightweight window virtualization without external deps
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [itemHeight, setItemHeight] = useState(560) // initial estimate
+  const [scrollY, setScrollY] = useState(0)
+  const [viewportH, setViewportH] = useState(0)
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY || window.pageYOffset || 0)
+    const onResize = () => setViewportH(window.innerHeight || 0)
+    onScroll()
+    onResize()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
+  // Measure a real card height once it renders
+  useEffect(() => {
+    const el = containerRef.current?.querySelector('.cv-auto')
+    if (el) {
+      const rect = (el as HTMLElement).getBoundingClientRect()
+      if (rect.height && Math.abs(rect.height - itemHeight) > 10) {
+        setItemHeight(Math.round(rect.height + 24)) // + padding gap
+      }
+    }
+  }, [shows.length]) // re-check when list grows
+
+  const overscan = 6
+  const { start, end, topPad, bottomPad } = useMemo(() => {
+    const vh = viewportH || (typeof window !== 'undefined' ? window.innerHeight : 0)
+    const ih = itemHeight || 560
+    const first = Math.max(0, Math.floor((scrollY - 200) / ih) - overscan)
+    const visible = Math.ceil((vh + 400) / ih) + overscan * 2
+    const last = Math.min(shows.length, first + visible)
+    return {
+      start: first,
+      end: last,
+      topPad: first * ih,
+      bottomPad: Math.max(0, (shows.length - last) * ih)
+    }
+  }, [scrollY, viewportH, itemHeight, shows.length])
+
+  const slice = useMemo(() => shows.slice(start, end), [shows, start, end])
+
   return (
-    <div className={`${className}`}>
+    <div ref={containerRef} className={`${className}`}>
+      <div style={{ height: topPad }} />
       <div className="grid grid-cols-1 gap-6">
-        {shows.map((show) => (
-          <ShowCard
-            key={show.imdb_id}
-            show={show}
-            onAction={handleShowAction}
-            hiddenActions={hiddenActions}
-            showActions={showActions}
-          />
+        {slice.map((show) => (
+          <div key={show.imdb_id} className="transition-all duration-300 ease-in-out">
+            <ShowCard
+              show={show}
+              onAction={handleShowAction}
+              hiddenActions={hiddenActions}
+              showActions={showActions}
+            />
+          </div>
         ))}
       </div>
+      <div style={{ height: bottomPad }} />
     </div>
   )
 }

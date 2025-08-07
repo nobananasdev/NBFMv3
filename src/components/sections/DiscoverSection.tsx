@@ -16,9 +16,22 @@ const DISCOVER_SORT_OPTIONS = [
 
 function DiscoverContent() {
   const { user } = useAuth()
-  const { shows, loading, error, hasMore, fetchMore, handleShowAction, sortBy, setSortBy } = useDiscoverShows(20)
+  const {
+    shows,
+    loading,
+    error,
+    hasMore,
+    fetchMore,
+    handleShowAction,
+    sortBy,
+    setSortBy,
+    preloadedShows,
+    isPreloading,
+    preloadNext
+  } = useDiscoverShows(20)
   const { setFilterOptions } = useFilter()
   const observerRef = useRef<HTMLDivElement>(null)
+  const preloadObserverRef = useRef<HTMLDivElement>(null)
 
   // Load filter options on mount
   useEffect(() => {
@@ -34,35 +47,67 @@ function DiscoverContent() {
   // Debug info
   console.log('🎬 DiscoverSection render:', {
     shows: shows.length,
+    preloadedShows: preloadedShows.length,
     loading,
+    isPreloading,
     error: error?.message || error,
     user: !!user
   })
 
-  // Infinite scroll implementation
+  // Preload trigger - starts loading next batch much earlier
+  const handlePreloadObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries
+      if (target.isIntersecting && hasMore && !loading && !isPreloading) {
+        console.log('🔍 [DiscoverSection] Preload trigger activated')
+        preloadNext()
+      }
+    },
+    [hasMore, loading, isPreloading, preloadNext]
+  )
+
+  // Infinite scroll implementation - now uses preloaded content
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries
       if (target.isIntersecting && hasMore && !loading) {
+        console.log('🔍 [DiscoverSection] Infinite scroll trigger activated')
         fetchMore()
       }
     },
     [hasMore, loading, fetchMore]
   )
 
+  // Preload observer - triggers much earlier (when user is about halfway through current content)
+  useEffect(() => {
+    const element = preloadObserverRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(handlePreloadObserver, {
+      threshold: 0.1,
+      rootMargin: '800px' // Much larger margin for early preloading
+    })
+
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [handlePreloadObserver])
+
+  // Main infinite scroll observer - smaller margin since content should be preloaded
   useEffect(() => {
     const element = observerRef.current
     if (!element) return
 
     const observer = new IntersectionObserver(handleObserver, {
       threshold: 0.1,
-      rootMargin: '100px'
+      rootMargin: '100px' // Smaller margin since content is preloaded
     })
 
     observer.observe(element)
 
     return () => observer.disconnect()
   }, [handleObserver])
+
 
   return (
     <>
@@ -92,12 +137,37 @@ function DiscoverContent() {
           }
         />
 
+        {/* Preload Trigger - positioned earlier in the content */}
+        {hasMore && shows.length > 5 && (
+          <div
+            ref={preloadObserverRef}
+            className="h-1 w-full opacity-0 pointer-events-none"
+            style={{
+              position: 'absolute',
+              bottom: '60vh' // Position this trigger well before the end
+            }}
+          />
+        )}
+
         {/* Infinite Scroll Trigger */}
         {hasMore && (
           <div ref={observerRef} className="text-center py-8">
             {loading && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center space-y-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="text-sm text-gray-500">Loading more shows...</div>
+              </div>
+            )}
+            {!loading && isPreloading && (
+              <div className="flex flex-col items-center space-y-3">
+                <div className="animate-pulse h-2 w-32 bg-blue-200 rounded"></div>
+                <div className="text-xs text-gray-400">Preparing next shows...</div>
+              </div>
+            )}
+            {!loading && !isPreloading && preloadedShows.length > 0 && (
+              <div className="flex flex-col items-center space-y-3">
+                <div className="h-2 w-32 bg-green-200 rounded"></div>
+                <div className="text-xs text-green-600">Next shows ready!</div>
               </div>
             )}
           </div>

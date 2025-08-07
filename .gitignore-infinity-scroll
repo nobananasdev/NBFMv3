@@ -1,0 +1,17 @@
+# Infinity Scroll Optimization Changes - DO NOT COMMIT TO GITHUB
+# These files contain experimental infinity scroll improvements
+
+# Modified files with infinity scroll optimizations:
+src/components/sections/DiscoverSection.tsx
+src/hooks/useShows.ts
+src/lib/shows.ts
+
+# Animation improvements (can be committed separately if desired):
+src/app/globals.css
+
+# Files that may have been modified but are NOT infinity scroll related:
+# src/components/sections/NewSeasonsSection.tsx
+# src/components/sections/RatedSection.tsx  
+# src/components/sections/WatchlistSection.tsx
+# src/components/shows/ShowCard.tsx
+# src/components/shows/ShowsList.tsx
