@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React from 'react'
 import ShowCard from './ShowCard'
 import { ShowWithGenres } from '@/lib/shows'
 import { ShowStatus } from '@/types/database'
@@ -14,6 +14,7 @@ interface ShowsListProps {
   className?: string
   hiddenActions?: ShowStatus[]
   showActions?: boolean
+  searchQuery?: string
 }
 
 export default function ShowsList({
@@ -24,67 +25,23 @@ export default function ShowsList({
   emptyMessage = 'No shows found',
   className = '',
   hiddenActions = [],
-  showActions = true
+  showActions = true,
+  searchQuery
 }: ShowsListProps) {
   const handleShowAction = (show: ShowWithGenres, status: ShowStatus) => {
     // Just call the parent callback - no animations, no local state
     onShowAction?.(show, status)
   }
 
-  // Hooks must be declared unconditionally (before any early returns)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const [itemHeight, setItemHeight] = useState(560) // initial estimate
-  const [scrollY, setScrollY] = useState(0)
-  const [viewportH, setViewportH] = useState(0)
-
-  useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY || window.pageYOffset || 0)
-    const onResize = () => setViewportH(window.innerHeight || 0)
-    onScroll()
-    onResize()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onResize)
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [])
-
-  // Measure a real card height once it renders
-  useEffect(() => {
-    const el = containerRef.current?.querySelector('.cv-auto')
-    if (el) {
-      const rect = (el as HTMLElement).getBoundingClientRect()
-      if (rect.height && Math.abs(rect.height - itemHeight) > 10) {
-        setItemHeight(Math.round(rect.height + 24)) // + padding gap
-      }
-    }
-  }, [shows.length, itemHeight]) // include itemHeight to satisfy exhaustive-deps
-
-  const overscan = 6
-  const { start, end, topPad, bottomPad } = useMemo(() => {
-    const vh = viewportH || (typeof window !== 'undefined' ? window.innerHeight : 0)
-    const ih = itemHeight || 560
-    const first = Math.max(0, Math.floor((scrollY - 200) / ih) - overscan)
-    const visible = Math.ceil((vh + 400) / ih) + overscan * 2
-    const last = Math.min(shows.length, first + visible)
-    return {
-      start: first,
-      end: last,
-      topPad: first * ih,
-      bottomPad: Math.max(0, (shows.length - last) * ih)
-    }
-  }, [scrollY, viewportH, itemHeight, shows.length])
-
-  const slice = useMemo(() => shows.slice(start, end), [shows, start, end])
+  // Virtualization removed to prevent layout jitter during filter changes
 
   // Conditional UI returned after hooks to comply with rules-of-hooks
-  if (loading) {
+  if (loading && shows.length === 0) {
     return (
       <div className={`${className}`}>
         <div className="grid grid-cols-1 gap-6">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="card min-h-[320px] p-6">
+            <div key={index} className="card min-h-[560px] p-6">
               <div className="animate-pulse">
                 <div className="hidden md:flex gap-6">
                   <div className="w-[200px] h-[300px] bg-gray-200 rounded-lg"></div>
@@ -171,21 +128,21 @@ export default function ShowsList({
   }
 
   return (
-    <div ref={containerRef} className={`${className}`}>
-      <div style={{ height: topPad }} />
+    <div className={`${className}`}>
       <div className="grid grid-cols-1 gap-6">
-        {slice.map((show) => (
-          <div key={show.imdb_id} className="transition-all duration-300 ease-in-out cv-auto">
+        {shows.map((show, index) => (
+          <div key={show.imdb_id} className="cv-auto">
             <ShowCard
               show={show}
               onAction={handleShowAction}
               hiddenActions={hiddenActions}
               showActions={showActions}
+              priority={index < 3}
+              searchQuery={searchQuery}
             />
           </div>
         ))}
       </div>
-      <div style={{ height: bottomPad }} />
     </div>
   )
 }

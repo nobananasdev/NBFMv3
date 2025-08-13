@@ -92,6 +92,7 @@ export default function NewSeasonsList({
       <div className="space-y-4">
         {displayedShows.map((show) => {
           const posterUrl = getPosterUrl(show)
+          const posterThumb = (show as any).poster_thumb_url as string | undefined
           const { seasonText, airDate, isUpcoming } = formatSeasonInfo(show)
 
           return (
@@ -101,11 +102,14 @@ export default function NewSeasonsList({
                 <div className="flex-shrink-0 w-[30px] h-[45px] relative bg-gray-100 rounded overflow-hidden">
                   {posterUrl ? (
                     <Image
-                      src={posterUrl}
+                      src={posterThumb || posterUrl}
                       alt={show.name}
                       fill
                       className="object-cover"
                       sizes="30px"
+                      quality={40}
+                      placeholder={posterThumb ? 'blur' : 'empty'}
+                      blurDataURL={posterThumb}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">

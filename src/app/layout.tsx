@@ -22,6 +22,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://tluyjrjdwtskuconslaj.supabase.co" />
+        <link rel="dns-prefetch" href="//tluyjrjdwtskuconslaj.supabase.co" />
+        <link rel="preconnect" href="https://image.tmdb.org" />
+        <link rel="dns-prefetch" href="//image.tmdb.org" />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <NavigationProvider>

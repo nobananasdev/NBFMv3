@@ -2,6 +2,7 @@
 
 import { useNavigation, NavigationSection } from '@/contexts/NavigationContext'
 import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
 
 interface NavigationItem {
   id: NavigationSection
@@ -16,6 +17,37 @@ const ArrowUpRightIcon = ({ isActive }: { isActive: boolean }) => (
   </svg>
 )
 
+const CountBadge = ({ value, isActive }: { value?: number; isActive: boolean }) => {
+  const [animate, setAnimate] = useState(false)
+  const prev = useRef(value)
+
+  useEffect(() => {
+    if (value !== prev.current) {
+      setAnimate(true)
+      const t = setTimeout(() => setAnimate(false), 650)
+      prev.current = value
+      return () => clearTimeout(t)
+    }
+  }, [value])
+
+  const display =
+    typeof value === 'number' && value >= 0
+      ? new Intl.NumberFormat('en-US').format(value)
+      : '0'
+
+  return (
+    <span
+      aria-live="polite"
+      style={{ fontVariantNumeric: 'tabular-nums' }}
+      className={`count-badge-pop text-[10px] font-bold tracking-[1.1px] ${
+        isActive ? 'text-[#adadad]' : 'text-[#adadad]'
+      } ${animate ? 'is-animating animate-count-pop' : ''}`}
+    >
+      {display}
+    </span>
+  )
+}
+
 export default function Navigation() {
   const { activeSection, setActiveSection, watchlistCount, ratedCount, discoverCount, newSeasonsCount } = useNavigation()
 
@@ -27,16 +59,9 @@ export default function Navigation() {
   ]
 
 
-  const getCountDisplay = (itemId: NavigationSection, count?: number) => {
-    if (typeof count === 'number' && count >= 0) {
-      return new Intl.NumberFormat('en-US').format(count)
-    }
-    return '0'
-  }
 
   const renderButton = (item: NavigationItem) => {
     const isActive = activeSection === item.id
-    const countDisplay = getCountDisplay(item.id, item.count)
     
     return (
       <button
@@ -79,14 +104,7 @@ export default function Navigation() {
           </div>
           
           {/* Right side: count */}
-          <span
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-            className={`text-[10px] font-bold tracking-[1.1px] ${
-              isActive ? 'text-[#adadad]' : 'text-[#adadad]'
-            }`}
-          >
-            {countDisplay}
-          </span>
+          <CountBadge value={item.count} isActive={isActive} />
         </div>
       </button>
     )
@@ -94,7 +112,6 @@ export default function Navigation() {
 
   const renderMobileButton = (item: NavigationItem) => {
     const isActive = activeSection === item.id
-    const countDisplay = getCountDisplay(item.id, item.count)
     
     return (
       <button
@@ -135,14 +152,7 @@ export default function Navigation() {
           </h3>
           
           {/* Count at bottom */}
-          <span
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-            className={`text-[10px] font-bold tracking-[1.1px] ${
-              isActive ? 'text-[#adadad]' : 'text-[#adadad]'
-            }`}
-          >
-            {countDisplay}
-          </span>
+          <CountBadge value={item.count} isActive={isActive} />
         </div>
       </button>
     )

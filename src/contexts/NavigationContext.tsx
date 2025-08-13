@@ -15,6 +15,7 @@ interface NavigationContextType {
   newSeasonsCount: number
   refreshCounters: () => Promise<void>
   refreshTrigger: number
+  discoverResetTrigger: number
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined)
@@ -26,7 +27,16 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [discoverCount, setDiscoverCount] = useState(0)
   const [newSeasonsCount, setNewSeasonsCount] = useState(0)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [discoverResetTrigger, setDiscoverResetTrigger] = useState(0)
   const { user } = useAuth()
+
+  const handleSetActiveSection = useCallback((section: NavigationSection) => {
+    if (section === 'discover' && activeSection === 'discover') {
+      // If clicking discover while already on discover, trigger a reset
+      setDiscoverResetTrigger(prev => prev + 1)
+    }
+    setActiveSection(section)
+  }, [activeSection])
 
   const refreshCounters = useCallback(async () => {
     try {
@@ -97,13 +107,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   return (
     <NavigationContext.Provider value={{
       activeSection,
-      setActiveSection,
+      setActiveSection: handleSetActiveSection,
       watchlistCount,
       ratedCount,
       discoverCount,
       newSeasonsCount,
       refreshCounters,
-      refreshTrigger
+      refreshTrigger,
+      discoverResetTrigger
     }}>
       {children}
     </NavigationContext.Provider>

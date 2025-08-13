@@ -66,6 +66,7 @@ export function useShows({
   const [preloadedNextOffset, setPreloadedNextOffset] = useState<number | null>(null)
   const [preloadedHasMore, setPreloadedHasMore] = useState<boolean | null>(null)
 
+
   // Ensure we never accumulate duplicate imdb_id entries when appending pages
   const dedupeByImdb = useCallback((items: ShowWithGenres[]) => {
     const map = new Map<string, ShowWithGenres>()
@@ -301,6 +302,7 @@ export function useShows({
     setServerOffset(0)
     await fetchShowsData(true)
   }, [fetchShowsData])
+
 
   const handleShowAction = useCallback(async (show: ShowWithGenres, status: ShowStatus) => {
     console.log('🔄 [useShows] handleShowAction called for:', show.name, 'status:', status, 'view:', view)

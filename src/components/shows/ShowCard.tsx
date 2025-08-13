@@ -5,20 +5,23 @@ import Image from 'next/image'
 import { ShowWithGenres } from '@/lib/shows'
 import { ShowStatus } from '@/types/database'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  filterStreamingProviders, 
-  formatAirDate, 
-  formatSeriesInfo, 
+import {
+  filterStreamingProviders,
+  formatAirDate,
+  formatSeriesInfo,
   getShowDescription,
   getPosterUrl,
   updateUserShowStatus
 } from '@/lib/shows'
+import { highlightText, highlightTextArray } from '@/lib/textHighlight'
 
 interface ShowCardProps {
   show: ShowWithGenres
   onAction?: (show: ShowWithGenres, status: ShowStatus) => void
   hiddenActions?: ShowStatus[]
   showActions?: boolean
+  priority?: boolean
+  searchQuery?: string
 }
 
 const ACTION_BUTTONS = [
@@ -56,7 +59,7 @@ const ACTION_BUTTONS = [
   }
 ]
 
-function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = true }: ShowCardProps) {
+function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = true, priority = false, searchQuery }: ShowCardProps) {
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
   const [actionResult, setActionResult] = useState<{
@@ -74,6 +77,8 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const seriesInfo = formatSeriesInfo(show)
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
+  // Use DB-provided tiny thumb if available for a fast blur-up; fallback to undefined
+  const blurDataURL = (show as any).poster_thumb_url as string | undefined
 
   // Get only our_score rating
   const getRating = () => {
@@ -149,7 +154,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
 
   if (actionResult) {
     return (
-      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center min-h-[400px] transition-all duration-400 ease-in-out ${
+      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center min-h-[400px] transition-[opacity,transform] duration-400 ease-in-out ${
         showSuccessMessage && !shouldFadeOutSuccess
           ? 'opacity-100 scale-100 animate-success-bounce'
           : shouldFadeOutSuccess
@@ -169,8 +174,8 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   }
 
   return (
-    <div className={`cv-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-all duration-300 ease-in-out ${
-      shouldFadeOut ? 'opacity-0 scale-95 transform' : 'opacity-100 scale-100'
+    <div className={`cv-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-opacity duration-200 ease-in-out ${
+      shouldFadeOut ? 'opacity-0' : 'opacity-100'
     }`}>
       {/* Rating Badge - Top Right */}
       {rating && (
@@ -201,6 +206,11 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 className="object-cover"
                 sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 240px"
                 style={{ borderRadius: '15px' }}
+                quality={60}
+                priority={priority}
+                fetchPriority={priority ? 'high' : 'auto'}
+                placeholder={blurDataURL ? 'blur' : 'empty'}
+                blurDataURL={blurDataURL}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-200" style={{ borderRadius: '15px' }}>
@@ -219,7 +229,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             {/* Title and Year */}
             <div className="mb-2 sm:mb-3 lg:mb-4 lg:pr-24">
               <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-[#000000] mb-1">
-                {show.name}
+                {searchQuery ? highlightText(show.name, searchQuery, 'bg-yellow-200 px-1 py-0.5 rounded font-bold') : show.name}
                 {airDate && (
                   <span className="font-normal text-[#7b7b7b] ml-1 sm:ml-2 text-[14px] sm:text-[16px] lg:text-[24px]">
                     ({airDate})
@@ -265,7 +275,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       Creators:
                     </span>
                     <span className="font-normal text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000] ml-1">
-                      {show.creators.join(', ')}
+                      {searchQuery ? highlightTextArray(show.creators, searchQuery, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold') : show.creators.join(', ')}
                     </span>
                   </div>
                 )}
@@ -275,7 +285,16 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       Cast:
                     </span>
                     <span className="font-normal text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000] ml-1">
-                      {show.main_cast.slice(0, 5).join(', ')}{show.main_cast.length > 5 ? '...' : ''}
+                      {searchQuery ? (
+                        <>
+                          {highlightTextArray(show.main_cast.slice(0, 5), searchQuery, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                          {show.main_cast.length > 5 ? '...' : ''}
+                        </>
+                      ) : (
+                        <>
+                          {show.main_cast.slice(0, 5).join(', ')}{show.main_cast.length > 5 ? '...' : ''}
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -407,7 +426,8 @@ function arePropsEqual(prev: ShowCardProps, next: ShowCardProps) {
     prev.show === next.show &&
     prev.showActions === next.showActions &&
     arraysEqual(prev.hiddenActions, next.hiddenActions) &&
-    prev.onAction === next.onAction
+    prev.onAction === next.onAction &&
+    prev.searchQuery === next.searchQuery
   )
 }
 

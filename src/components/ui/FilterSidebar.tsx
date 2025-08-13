@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useFilter } from '@/contexts/FilterContext'
 
 export default function FilterSidebar() {
@@ -18,7 +18,21 @@ export default function FilterSidebar() {
 
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Close sidebar on escape key
+  // Local staged filter values to avoid updating global filters while the panel is open.
+  const [stagedGenres, setStagedGenres] = useState<number[]>([])
+  const [stagedStreamers, setStagedStreamers] = useState<number[]>([])
+  const [stagedYearRange, setStagedYearRange] = useState<[number, number]>([1950, 2025])
+
+  // Initialize staged values when the panel opens, and keep them in sync if filters change while open.
+  useEffect(() => {
+    if (isFilterOpen) {
+      setStagedGenres(filters.selectedGenres)
+      setStagedStreamers(filters.selectedStreamers)
+      setStagedYearRange(filters.yearRange)
+    }
+  }, [isFilterOpen, filters.selectedGenres, filters.selectedStreamers, filters.yearRange])
+
+  // Close sidebar on escape key, and lock body scroll without layout shift
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFilterOpen) {
@@ -28,44 +42,81 @@ export default function FilterSidebar() {
 
     if (isFilterOpen) {
       document.addEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'hidden' // Prevent background scroll
-      // Trigger animation after component mounts
+
+      // Reserve scrollbar gutter and then lock body scrolling
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`
+      }
+      document.body.style.overflow = 'hidden'
+
+      // Start slide-in animation
       setTimeout(() => setIsAnimating(true), 10)
     } else {
       setIsAnimating(false)
+      // Restore styles
+      document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
     }
   }, [isFilterOpen, closeFilter])
 
   if (!isFilterOpen) return null
 
   const handleGenreChange = (genreId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedGenres([...filters.selectedGenres, genreId])
-    } else {
-      setSelectedGenres(filters.selectedGenres.filter(id => id !== genreId))
-    }
+    setStagedGenres(prev =>
+      checked ? [...prev, genreId] : prev.filter(id => id !== genreId)
+    )
   }
 
   const handleStreamerChange = (streamerId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedStreamers([...filters.selectedStreamers, streamerId])
-    } else {
-      setSelectedStreamers(filters.selectedStreamers.filter(id => id !== streamerId))
-    }
+    setStagedStreamers(prev =>
+      checked ? [...prev, streamerId] : prev.filter(id => id !== streamerId)
+    )
   }
 
   const handleYearRangeChange = (type: 'min' | 'max', value: number) => {
-    if (type === 'min') {
-      setYearRange([value, filters.yearRange[1]])
-    } else {
-      setYearRange([filters.yearRange[0], value])
-    }
+    setStagedYearRange(prev => (type === 'min' ? [value, prev[1]] : [prev[0], value]))
   }
+
+  // Apply staged filters in one commit to avoid intermediate fetches/jitter
+  const applyFilters = () => {
+    setSelectedGenres(stagedGenres)
+    setSelectedStreamers(stagedStreamers)
+    setYearRange(stagedYearRange)
+    closeFilter()
+  }
+
+  // Clear staged values to defaults derived from options, but do not commit until Apply is pressed
+  const clearStaged = () => {
+    const yr = filterOptions?.yearRange ?? [1950, 2025]
+    setStagedGenres([])
+    setStagedStreamers([])
+    setStagedYearRange(yr)
+  }
+
+  // Whether staged differs from current filters (to enable/disable Apply)
+  // Note: do NOT use hooks here to keep hook order identical whether the panel is open or closed.
+  const isDirty = (() => {
+    const sameGenres =
+      stagedGenres.length === filters.selectedGenres.length &&
+      stagedGenres.every(id => filters.selectedGenres.includes(id))
+
+    const sameStreamers =
+      stagedStreamers.length === filters.selectedStreamers.length &&
+      stagedStreamers.every(id => filters.selectedStreamers.includes(id))
+
+    const sameYear =
+      stagedYearRange[0] === filters.yearRange[0] &&
+      stagedYearRange[1] === filters.yearRange[1]
+
+    return !(sameGenres && sameStreamers && sameYear)
+  })()
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -105,7 +156,7 @@ export default function FilterSidebar() {
                   <label key={genre.id} className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={filters.selectedGenres.includes(genre.id)}
+                      checked={stagedGenres.includes(genre.id)}
                       onChange={(e) => handleGenreChange(genre.id, e.target.checked)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
                     />
@@ -128,12 +179,12 @@ export default function FilterSidebar() {
                       type="range"
                       min={filterOptions.yearRange[0]}
                       max={filterOptions.yearRange[1]}
-                      value={filters.yearRange[0]}
+                      value={stagedYearRange[0]}
                       onChange={(e) => handleYearRangeChange('min', parseInt(e.target.value))}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                     <div className="text-center text-sm text-gray-700 mt-1">
-                      {filters.yearRange[0]}
+                      {stagedYearRange[0]}
                     </div>
                   </div>
                   <div className="flex-1">
@@ -142,17 +193,17 @@ export default function FilterSidebar() {
                       type="range"
                       min={filterOptions.yearRange[0]}
                       max={filterOptions.yearRange[1]}
-                      value={filters.yearRange[1]}
+                      value={stagedYearRange[1]}
                       onChange={(e) => handleYearRangeChange('max', parseInt(e.target.value))}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                     />
                     <div className="text-center text-sm text-gray-700 mt-1">
-                      {filters.yearRange[1]}
+                      {stagedYearRange[1]}
                     </div>
                   </div>
                 </div>
                 <div className="text-center text-sm text-gray-600">
-                  {filters.yearRange[0]} - {filters.yearRange[1]}
+                  {stagedYearRange[0]} - {stagedYearRange[1]}
                 </div>
               </div>
             </div>
@@ -167,7 +218,7 @@ export default function FilterSidebar() {
                   <label key={streamer.id} className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={filters.selectedStreamers.includes(streamer.id)}
+                      checked={stagedStreamers.includes(streamer.id)}
                       onChange={(e) => handleStreamerChange(streamer.id, e.target.checked)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
                     />
@@ -181,17 +232,18 @@ export default function FilterSidebar() {
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 space-y-3">
-          {hasActiveFilters && (
+          {(hasActiveFilters || stagedGenres.length > 0 || stagedStreamers.length > 0 || (filterOptions && (stagedYearRange[0] !== filterOptions.yearRange[0] || stagedYearRange[1] !== filterOptions.yearRange[1]))) && (
             <button
-              onClick={clearFilters}
+              onClick={clearStaged}
               className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
             >
               Clear All Filters
             </button>
           )}
           <button
-            onClick={closeFilter}
-            className="w-full px-6 py-3 bg-[#3a3a3a] hover:bg-[#2a2a2a] text-white font-semibold rounded-3xl transition-colors"
+            onClick={applyFilters}
+            disabled={!isDirty}
+            className={`w-full px-6 py-3 text-white font-semibold rounded-3xl transition-colors ${isDirty ? 'bg-[#3a3a3a] hover:bg-[#2a2a2a]' : 'bg-gray-300 cursor-not-allowed'}`}
           >
             Apply Filters
           </button>

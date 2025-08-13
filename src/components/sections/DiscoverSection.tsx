@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
-import { useDiscoverShows } from '@/hooks/useShows'
+import { useEffect, useRef, useCallback, useState } from 'react'
+import { useDiscoverShows, SortOption } from '@/hooks/useShows'
 import ShowsList from '@/components/shows/ShowsList'
 import SortSelector from '@/components/ui/SortSelector'
 import FilterSidebar from '@/components/ui/FilterSidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { FilterProvider, useFilter } from '@/contexts/FilterContext'
-import { fetchFilterOptions } from '@/lib/shows'
+import { useNavigation } from '@/contexts/NavigationContext'
+import { fetchFilterOptions, searchShowsDatabase, fetchShowByImdbId, ShowWithGenres } from '@/lib/shows'
+import SearchPanel from '@/components/ui/SearchPanel'
 
 const DISCOVER_SORT_OPTIONS = [
   { value: 'latest' as const, label: 'Latest Shows' },
@@ -16,6 +18,7 @@ const DISCOVER_SORT_OPTIONS = [
 
 function DiscoverContent() {
   const { user } = useAuth()
+  const { discoverResetTrigger } = useNavigation()
   const {
     shows,
     loading,
@@ -29,9 +32,22 @@ function DiscoverContent() {
     isPreloading,
     preloadNext
   } = useDiscoverShows(20)
-  const { setFilterOptions } = useFilter()
+  const { setFilterOptions, filters } = useFilter()
   const observerRef = useRef<HTMLDivElement>(null)
   const preloadObserverRef = useRef<HTMLDivElement>(null)
+
+  // Search UI state
+  const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false)
+
+  // Client-side search mode state
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<ShowWithGenres[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState<any>(null)
+  const [searchHasMore, setSearchHasMore] = useState<boolean>(false)
+  const [searchOffset, setSearchOffset] = useState<number>(0)
+  const [searchSortBy, setSearchSortBy] = useState<SortOption>('latest')
 
   // Load filter options on mount
   useEffect(() => {
@@ -51,31 +67,75 @@ function DiscoverContent() {
     loading,
     isPreloading,
     error: error?.message || error,
-    user: !!user
+    user: !!user,
+    isSearchActive,
+    searchResults: searchResults.length,
+    searchLoading,
+    searchError: searchError?.message || searchError
   })
 
   // Preload trigger - starts loading next batch much earlier
   const handlePreloadObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries
+      // Disable preloading during search mode
+      if (isSearchActive) return
       if (target.isIntersecting && hasMore && !loading && !isPreloading) {
         console.log('🔍 [DiscoverSection] Preload trigger activated')
         preloadNext()
       }
     },
-    [hasMore, loading, isPreloading, preloadNext]
+    [isSearchActive, hasMore, loading, isPreloading, preloadNext]
   )
 
-  // Infinite scroll implementation - now uses preloaded content
+  // Infinite scroll implementation - switches to search paging when active
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries
-      if (target.isIntersecting && hasMore && !loading) {
-        console.log('🔍 [DiscoverSection] Infinite scroll trigger activated')
-        fetchMore()
+      if (target.isIntersecting) {
+        if (isSearchActive) {
+          if (searchHasMore && !searchLoading) {
+            console.log('🔍 [DiscoverSection] Infinite scroll trigger (search) activated')
+            ;(async () => {
+              setSearchLoading(true)
+              try {
+                const result = await searchShowsDatabase({
+                  query: searchQuery,
+                  limit: 20,
+                  offset: searchOffset,
+                  genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
+                  yearRange: filters.yearRange,
+                  streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
+                  excludeUserShows: !!user,
+                  userId: user?.id,
+                  sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
+                })
+                if (result.error) {
+                  setSearchError(result.error)
+                  setSearchHasMore(false)
+                } else {
+                  setSearchResults(prev => {
+                    const map = new Map(prev.map(s => [s.imdb_id, s]))
+                    for (const s of result.shows) {
+                      if (!map.has(s.imdb_id)) map.set(s.imdb_id, s)
+                    }
+                    return Array.from(map.values())
+                  })
+                  setSearchHasMore(result.hasMore)
+                  setSearchOffset(result.nextOffset ?? searchOffset)
+                }
+              } finally {
+                setSearchLoading(false)
+              }
+            })()
+          }
+        } else if (hasMore && !loading) {
+          console.log('🔍 [DiscoverSection] Infinite scroll trigger activated')
+          fetchMore()
+        }
       }
     },
-    [hasMore, loading, fetchMore]
+    [isSearchActive, searchHasMore, searchLoading, searchQuery, searchOffset, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user, hasMore, loading, fetchMore]
   )
 
   // Preload observer - triggers much earlier (when user is about halfway through current content)
@@ -88,10 +148,12 @@ function DiscoverContent() {
       rootMargin: '800px' // Much larger margin for early preloading
     })
 
-    observer.observe(element)
+    if (!isSearchActive) {
+      observer.observe(element)
+    }
 
     return () => observer.disconnect()
-  }, [handlePreloadObserver])
+  }, [handlePreloadObserver, isSearchActive])
 
   // Main infinite scroll observer - smaller margin since content should be preloaded
   useEffect(() => {
@@ -109,36 +171,208 @@ function DiscoverContent() {
   }, [handleObserver])
 
 
+  // Start a new client-side search
+  const startSearch = useCallback(async (q: string, imdbId?: string) => {
+    setIsSearchActive(true)
+    setSearchQuery(q)
+    setSearchResults([])
+    setSearchError(null)
+    setSearchHasMore(false)
+    setSearchOffset(0)
+    setIsSearchPanelOpen(false)
+    setSearchLoading(true)
+    
+    try {
+      if (imdbId) {
+        // Exact show selection - fetch specific show by IMDB ID
+        console.log('🔍 [DiscoverSection] Fetching specific show:', imdbId)
+        const result = await fetchShowByImdbId(imdbId, user?.id)
+        if (result.error) {
+          setSearchError(result.error)
+          setSearchResults([])
+          setSearchHasMore(false)
+          setSearchOffset(0)
+        } else if (result.show) {
+          setSearchResults([result.show])
+          setSearchHasMore(false) // Only one specific show
+          setSearchOffset(0)
+        } else {
+          setSearchError(new Error('Show not found'))
+          setSearchResults([])
+          setSearchHasMore(false)
+          setSearchOffset(0)
+        }
+      } else {
+        // General search - use database search
+        console.log('🔍 [DiscoverSection] Performing general search:', q)
+        const result = await searchShowsDatabase({
+          query: q,
+          limit: 20,
+          offset: 0,
+          genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
+          yearRange: filters.yearRange,
+          streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
+          excludeUserShows: !!user,
+          userId: user?.id,
+          sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
+        })
+        if (result.error) {
+          setSearchError(result.error)
+          setSearchResults([])
+          setSearchHasMore(false)
+          setSearchOffset(0)
+        } else {
+          setSearchResults(result.shows)
+          setSearchHasMore(result.hasMore)
+          setSearchOffset(result.nextOffset ?? 0)
+        }
+      }
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user, searchSortBy])
+
+  const clearSearch = useCallback(() => {
+    setIsSearchActive(false)
+    setSearchQuery('')
+    setSearchResults([])
+    setSearchError(null)
+    setSearchHasMore(false)
+    setSearchOffset(0)
+    setSearchSortBy('latest')
+  }, [])
+
+  // Clear search when discovery navigation is clicked again
+  useEffect(() => {
+    if (discoverResetTrigger > 0 && isSearchActive) {
+      console.log('🔍 [DiscoverSection] Clearing search due to discovery nav click')
+      clearSearch()
+    }
+  }, [discoverResetTrigger, isSearchActive, clearSearch])
+
+  // Handle search sort change - restart search with new sorting
+  const handleSearchSortChange = useCallback(async (newSort: SortOption) => {
+    if (!isSearchActive || !searchQuery) return
+    
+    setSearchSortBy(newSort)
+    setSearchResults([])
+    setSearchError(null)
+    setSearchHasMore(false)
+    setSearchOffset(0)
+    setSearchLoading(true)
+    
+    try {
+      const result = await searchShowsDatabase({
+        query: searchQuery,
+        limit: 20,
+        offset: 0,
+        genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
+        yearRange: filters.yearRange,
+        streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
+        excludeUserShows: !!user,
+        userId: user?.id,
+        sortBy: newSort === 'rating' ? 'by_rating' : newSort
+      })
+      
+      if (result.error) {
+        setSearchError(result.error)
+        setSearchResults([])
+        setSearchHasMore(false)
+        setSearchOffset(0)
+      } else {
+        setSearchResults(result.shows)
+        setSearchHasMore(result.hasMore)
+        setSearchOffset(result.nextOffset ?? 0)
+      }
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [isSearchActive, searchQuery, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user])
+
+  // Effective values for UI
+  const effectiveShows = isSearchActive ? searchResults : shows
+  const effectiveLoading = isSearchActive ? searchLoading : loading
+  const effectiveError = isSearchActive ? searchError : error
+  const effectiveHasMore = isSearchActive ? searchHasMore : hasMore
+
   return (
     <>
       <div className="space-y-6">
-        {/* Sort Selector */}
+        {/* Controls row: count + Search + Sort/Filter */}
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-500">
-            {shows.length > 0 && `${shows.length} show${shows.length === 1 ? '' : 's'}`}
+            {effectiveShows.length > 0 &&
+              `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
           </div>
-          <SortSelector
-            value={sortBy}
-            onChange={setSortBy}
-            options={DISCOVER_SORT_OPTIONS}
-            showFilter={true}
-          />
+          <div className="flex gap-2 sm:gap-4">
+            {/* Search pill (same style as Sort pills) */}
+            <button
+              onClick={() => setIsSearchPanelOpen(true)}
+              className={`px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 ${
+                isSearchActive
+                  ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
+                  : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-md'
+              }`}
+              aria-label="Open search"
+            >
+              <svg
+                className={`w-4 h-4 sm:w-5 sm:h-5 ${isSearchActive ? 'text-white' : 'text-black'}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+
+            <SortSelector
+              value={isSearchActive ? searchSortBy : sortBy}
+              onChange={isSearchActive ? handleSearchSortChange : setSortBy}
+              options={DISCOVER_SORT_OPTIONS}
+              showFilter={true}
+            />
+          </div>
         </div>
-        
+
+        {/* Inline Search Panel */}
+        <SearchPanel
+          isOpen={isSearchPanelOpen}
+          onClose={() => setIsSearchPanelOpen(false)}
+          onCommit={startSearch}
+          inline={true}
+        />
+
+        {/* Active search chip */}
+        {isSearchActive && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs sm:text-sm text-gray-600">
+              Searching for: <span className="font-semibold text-gray-900">{searchQuery}</span>
+            </span>
+            <button
+              onClick={clearSearch}
+              className="text-xs sm:text-sm px-3 py-1 rounded-full border border-gray-300 hover:bg-gray-50"
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+
         <ShowsList
-          shows={shows}
-          loading={loading}
-          error={error}
+          shows={effectiveShows}
+          loading={effectiveLoading}
+          error={effectiveError}
           onShowAction={handleShowAction}
           emptyMessage={
-            user
-              ? "No new shows to discover right now. Check back later!"
-              : "Sign in to get personalized recommendations and discover new shows!"
+            isSearchActive
+              ? 'No results found. Try another search term.'
+              : user
+              ? 'No new shows to discover right now. Check back later!'
+              : 'Sign in to get personalized recommendations and discover new shows!'
           }
         />
 
-        {/* Preload Trigger - positioned earlier in the content */}
-        {hasMore && shows.length > 5 && (
+        {/* Preload Trigger - positioned earlier in the content (disabled in search mode) */}
+        {!isSearchActive && hasMore && shows.length > 5 && (
           <div
             ref={preloadObserverRef}
             className="h-1 w-full opacity-0 pointer-events-none"
@@ -150,21 +384,21 @@ function DiscoverContent() {
         )}
 
         {/* Infinite Scroll Trigger */}
-        {hasMore && (
+        {effectiveHasMore && (
           <div ref={observerRef} className="text-center py-8">
-            {loading && (
+            {effectiveLoading && (
               <div className="flex flex-col items-center space-y-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <div className="text-sm text-gray-500">Loading more shows...</div>
+                <div className="text-sm text-gray-500">Loading more {isSearchActive ? 'results' : 'shows'}...</div>
               </div>
             )}
-            {!loading && isPreloading && (
+            {!effectiveLoading && !isSearchActive && isPreloading && (
               <div className="flex flex-col items-center space-y-3">
                 <div className="animate-pulse h-2 w-32 bg-blue-200 rounded"></div>
                 <div className="text-xs text-gray-400">Preparing next shows...</div>
               </div>
             )}
-            {!loading && !isPreloading && preloadedShows.length > 0 && (
+            {!effectiveLoading && !isSearchActive && preloadedShows.length > 0 && (
               <div className="flex flex-col items-center space-y-3">
                 <div className="h-2 w-32 bg-green-200 rounded"></div>
                 <div className="text-xs text-green-600">Next shows ready!</div>
