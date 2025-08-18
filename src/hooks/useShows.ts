@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { useContext } from 'react'
 import { FilterContext } from '@/contexts/FilterContext'
+import { preloadShowImages, preloadNextBatchImages } from '@/lib/imagePreloader'
 
 export type ShowsViewType = 'discover' | 'watchlist' | 'loved_it' | 'liked_it' | 'new_seasons' | 'all_rated'
 
@@ -149,6 +150,7 @@ export function useShows({
           genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
           yearRange: filters.yearRange,
           streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined
+          // Removed the search parameter - genre filtering is handled by genreIds
         })
       } else if (view === 'watchlist') {
         if (!user) {
@@ -202,14 +204,43 @@ export function useShows({
         if (reset) {
           setShows(dedupeByImdb(result.shows))
           setPreloadedShows([]) // Clear preloaded shows on reset
+          
+          // Aggressively preload images for initial batch with high priority
+          if (result.shows.length > 0) {
+            console.log(`🔍 [useShows] Starting aggressive image preloading for ${result.shows.length} initial shows`)
+            preloadShowImages(result.shows).catch(error => {
+              console.warn('🔍 [useShows] Image preloading failed for initial batch:', error)
+            })
+            
+            // Also immediately start preloading the next batch in the background
+            setTimeout(() => {
+              console.log('🔍 [useShows] Starting background preload for next batch')
+              fetchShowsData(false, undefined, true).catch(error => {
+                console.warn('🔍 [useShows] Background preload failed:', error)
+              })
+            }, 500) // Start preloading next batch after 500ms
+          }
+          
           // Update server offset for discover view
           if (view === 'discover' && (result as any).nextOffset !== undefined) {
             setServerOffset((result as any).nextOffset)
           }
         } else if (isPreload) {
-          // Store preloaded shows separately
+          // Store preloaded shows separately and immediately start preloading images
           console.log(`🔍 [useShows] Preloaded ${result.shows.length} shows`)
           setPreloadedShows(result.shows)
+          
+          // Immediately and aggressively preload images for the preloaded shows
+          if (result.shows.length > 0) {
+            console.log(`🔍 [useShows] Starting immediate image preloading for ${result.shows.length} preloaded shows`)
+            // Use setTimeout with 0 delay to ensure it doesn't block the UI
+            setTimeout(() => {
+              preloadShowImages(result.shows).catch(error => {
+                console.warn('🔍 [useShows] Image preloading failed for preloaded batch:', error)
+              })
+            }, 0)
+          }
+          
           // Track next offset and hasMore for the preloaded batch
           if (view === 'discover') {
             setPreloadedNextOffset((result as any).nextOffset ?? null)
@@ -267,7 +298,7 @@ export function useShows({
         setLoading(false)
       }
     }
-  }, [view, user, loading, limit, serverOffset, sortBy, shows, preloadedShows, preloadedNextOffset, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
+  }, [view, user, loading, limit, serverOffset, sortBy, shows, preloadedShows, preloadedNextOffset, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, filterContext])
 
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
@@ -356,13 +387,24 @@ export function useShows({
   useEffect(() => {
     if (autoFetch) {
       setServerOffset(0)
-      fetchShowsData(true)
+      
+      // For discover view with filters, coordinate with FilterContext
+      if (view === 'discover' && filterContext) {
+        filterContext.setIsApplyingFilters(true)
+      }
+      
+      fetchShowsData(true).finally(() => {
+        // Clear the applying filters state immediately when data is loaded
+        if (view === 'discover' && filterContext) {
+          filterContext.setIsApplyingFilters(false)
+        }
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    view, 
-    user?.id, 
-    autoFetch, 
+    view,
+    user?.id,
+    autoFetch,
     sortBy,
     // Only include filter dependencies for discover view to prevent infinite loops
     ...(view === 'discover' ? [selectedGenresKey, yearRangeKey, selectedStreamersKey] : [])

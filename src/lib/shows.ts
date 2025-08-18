@@ -21,6 +21,7 @@ export async function fetchShows(options: {
   genreIds?: number[]
   yearRange?: [number, number]
   streamerIds?: number[]
+  search?: string // Added for genre name search functionality
 }): Promise<{ shows: ShowWithGenres[], error: any, totalFiltered?: number, hasMore?: boolean, rawFetched: number, nextOffset: number }> {
   try {
     console.log('🔍 [fetchShows] Fetching shows with options:', options)
@@ -74,6 +75,9 @@ export async function fetchShows(options: {
       queryParams.push(`first_air_date=lte.${maxYear}-12-31`)
     }
     
+    // NOTE: Genre filtering moved to in-memory due to Supabase REST API limitations with array operators
+    // The cs and ov operators don't work correctly with array fields
+    
     // Exclude user shows filter
     if (options.excludeUserShows && userShowIds.length > 0) {
       // For large lists, we'll filter in memory instead of URL params
@@ -103,27 +107,27 @@ export async function fetchShows(options: {
         break
     }
     
-    // Calculate fetch limit - for infinite scroll, only fetch what we need plus small buffer
+    // Calculate fetch limit - need to fetch more when filtering to ensure we get enough results
     const baseLimit = options.limit || 20
     let fetchLimit = baseLimit
     
-    // Add small buffer only for filtering, not massive over-fetch
-    if (options.excludeUserShows && userShowIds.length > 0) {
-      // Add 50% buffer for user show filtering
-      fetchLimit = Math.ceil(baseLimit * 1.5)
-    }
-    
-    // Add small buffer for genre/streaming filtering
-    if (options.genreIds?.length || options.streamerIds?.length) {
-      fetchLimit = Math.ceil(fetchLimit * 1.3)
+    // Increase fetch limit when we have filters that will be applied in memory
+    if (options.streamerIds && options.streamerIds.length > 0) {
+      // Fetch 10x more to ensure we find enough matches in one request
+      fetchLimit = Math.max(baseLimit * 10, 200)
+    } else if (options.genreIds && options.genreIds.length > 0) {
+      // Fetch 5x more for genre filtering (applied in memory)
+      fetchLimit = Math.max(baseLimit * 5, 100)
+    } else if (options.excludeUserShows && userShowIds.length > 0) {
+      fetchLimit = Math.ceil(baseLimit * 1.8)
     }
     
     // Add offset to query for proper pagination
     const offsetParam = (options.offset && options.offset > 0) ? `&offset=${options.offset}` : ''
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${offsetParam}${queryString}${orderParam}`
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fetchLimit}${offsetParam}${queryString}${orderParam}`
     
-    console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey, '[REDACTED]'))
+    console.log('🔍 [fetchShows] Query URL:', url.replace(supabaseKey || '', '[REDACTED]'))
     
     let shows, error
     try {
@@ -163,22 +167,52 @@ export async function fetchShows(options: {
       console.log(`🔍 [fetchShows] After user shows filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Apply genre filtering
+    // Apply genre filtering in memory (database operators don't work correctly with arrays)
     if (options.genreIds && options.genreIds.length > 0) {
       const beforeCount = filteredShows.length
       filteredShows = filteredShows.filter((show: any) => {
         const showGenres = show.genre_ids || []
+        // Check if show has ANY of the selected genres
         return options.genreIds!.some(genreId => showGenres.includes(genreId))
       })
-      console.log(`🔍 [fetchShows] After genre filter: ${beforeCount} -> ${filteredShows.length}`)
+      console.log(`🔍 [fetchShows] After genre filter: ${beforeCount} -> ${filteredShows.length} (looking for genres: ${options.genreIds.join(', ')})`)
     }
+    
+    
     
     // Apply streaming provider filtering
     if (options.streamerIds && options.streamerIds.length > 0) {
       const beforeCount = filteredShows.length
       filteredShows = filteredShows.filter((show: any) => {
         if (!show.streaming_info?.US) return false
-        const showProviders = show.streaming_info.US.map((p: any) => p.provider_id)
+        
+        // Handle both array format and object format with ads/flatrate
+        let showProviders: number[] = []
+        
+        if (Array.isArray(show.streaming_info.US)) {
+          // Old format: direct array
+          showProviders = show.streaming_info.US.map((p: any) => p.provider_id).filter(Boolean)
+        } else if (typeof show.streaming_info.US === 'object') {
+          // New format: object with ads, flatrate, etc.
+          const usInfo = show.streaming_info.US
+          const allProviders: any[] = []
+          
+          if (usInfo.flatrate && Array.isArray(usInfo.flatrate)) {
+            allProviders.push(...usInfo.flatrate)
+          }
+          if (usInfo.ads && Array.isArray(usInfo.ads)) {
+            allProviders.push(...usInfo.ads)
+          }
+          if (usInfo.rent && Array.isArray(usInfo.rent)) {
+            allProviders.push(...usInfo.rent)
+          }
+          if (usInfo.buy && Array.isArray(usInfo.buy)) {
+            allProviders.push(...usInfo.buy)
+          }
+          
+          showProviders = allProviders.map((p: any) => p.provider_id).filter(Boolean)
+        }
+        
         return options.streamerIds!.some(streamerId => showProviders.includes(streamerId))
       })
       console.log(`🔍 [fetchShows] After streaming filter: ${beforeCount} -> ${filteredShows.length}`)
@@ -685,9 +719,51 @@ export function filterStreamingProviders(show: Show): Array<{ provider_name: str
     return []
   }
 
-  return show.streaming_info.US.filter(provider => 
-    STREAMING_PROVIDER_IDS.includes(provider.provider_id)
+  let providers: Array<{ provider_name: string; provider_id: number; type: string }> = []
+
+  // Handle both array format and object format with ads/flatrate
+  if (Array.isArray(show.streaming_info.US)) {
+    // Old format: direct array
+    providers = show.streaming_info.US.filter(provider =>
+      STREAMING_PROVIDER_IDS.includes(provider.provider_id)
+    )
+  } else if (typeof show.streaming_info.US === 'object') {
+    // New format: object with ads, flatrate, etc.
+    const usInfo = show.streaming_info.US as any
+    const allProviders: any[] = []
+    
+    if (usInfo.flatrate && Array.isArray(usInfo.flatrate)) {
+      allProviders.push(...usInfo.flatrate)
+    }
+    if (usInfo.ads && Array.isArray(usInfo.ads)) {
+      allProviders.push(...usInfo.ads)
+    }
+    if (usInfo.rent && Array.isArray(usInfo.rent)) {
+      allProviders.push(...usInfo.rent)
+    }
+    if (usInfo.buy && Array.isArray(usInfo.buy)) {
+      allProviders.push(...usInfo.buy)
+    }
+    
+    providers = allProviders
+      .filter(provider =>
+        provider.provider_id &&
+        provider.provider_name &&
+        STREAMING_PROVIDER_IDS.includes(provider.provider_id)
+      )
+      .map(provider => ({
+        provider_name: provider.provider_name,
+        provider_id: provider.provider_id,
+        type: provider.type || 'flatrate'
+      }))
+  }
+
+  // Remove duplicates based on provider_id
+  const uniqueProviders = providers.filter((provider, index, self) =>
+    index === self.findIndex(p => p.provider_id === provider.provider_id)
   )
+
+  return uniqueProviders
 }
 
 /**
@@ -972,6 +1048,7 @@ export async function fetchYearRange(): Promise<{ yearRange: [number, number], e
  */
 export async function fetchStreamingProviders(): Promise<{ streamers: Array<{ id: number; name: string }>, error: any }> {
   try {
+    console.log('🔍 [fetchStreamingProviders] Starting to fetch streaming providers...')
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     
@@ -982,37 +1059,74 @@ export async function fetchStreamingProviders(): Promise<{ streamers: Array<{ id
     }
 
     // Get all shows with streaming info
-    const url = `${supabaseUrl}/rest/v1/shows?select=streaming_info&show_in_discovery=eq.true&streaming_info=not.is.null`
+    const url = `${supabaseUrl}/rest/v1/shows?select=streaming_info&show_in_discovery=eq.true&streaming_info=not.is.null&limit=100`
     const response = await fetch(url, { method: 'GET', headers })
     
     if (!response.ok) {
-      console.error('Error fetching streaming providers:', response.status)
+      console.error('❌ [fetchStreamingProviders] Error fetching streaming providers:', response.status)
       return { streamers: [], error: new Error(`Failed to fetch streaming providers: ${response.status}`) }
     }
 
     const shows = await response.json()
+    console.log('🔍 [fetchStreamingProviders] Fetched', shows?.length || 0, 'shows with streaming info')
     
-    // Extract unique streaming providers
-    const providerMap = new Map<number, string>()
+    // Extract unique streaming providers, but only include the main ones
+    const allProviderMap = new Map<number, string>()
+    const filteredProviderMap = new Map<number, string>()
     
     shows?.forEach((show: any) => {
       if (show.streaming_info?.US) {
-        show.streaming_info.US.forEach((provider: any) => {
+        // Handle both array format and object format with ads/flatrate
+        let providers: any[] = []
+        
+        if (Array.isArray(show.streaming_info.US)) {
+          // Old format: direct array
+          providers = show.streaming_info.US
+        } else if (typeof show.streaming_info.US === 'object') {
+          // New format: object with ads, flatrate, etc.
+          const usInfo = show.streaming_info.US
+          if (usInfo.flatrate && Array.isArray(usInfo.flatrate)) {
+            providers = providers.concat(usInfo.flatrate)
+          }
+          if (usInfo.ads && Array.isArray(usInfo.ads)) {
+            providers = providers.concat(usInfo.ads)
+          }
+          if (usInfo.rent && Array.isArray(usInfo.rent)) {
+            providers = providers.concat(usInfo.rent)
+          }
+          if (usInfo.buy && Array.isArray(usInfo.buy)) {
+            providers = providers.concat(usInfo.buy)
+          }
+        }
+        
+        providers.forEach((provider: any) => {
           if (provider.provider_id && provider.provider_name) {
-            providerMap.set(provider.provider_id, provider.provider_name)
+            // Track all providers
+            allProviderMap.set(provider.provider_id, provider.provider_name)
+            
+            // Only include providers that are in our main provider list
+            if (STREAMING_PROVIDER_IDS.includes(provider.provider_id)) {
+              filteredProviderMap.set(provider.provider_id, provider.provider_name)
+            }
           }
         })
       }
     })
     
+    console.log('🔍 [fetchStreamingProviders] Found', allProviderMap.size, 'total unique providers')
+    console.log('🔍 [fetchStreamingProviders] All providers:', Array.from(allProviderMap.entries()).slice(0, 10))
+    console.log('🔍 [fetchStreamingProviders] Allowed provider IDs:', STREAMING_PROVIDER_IDS)
+    console.log('🔍 [fetchStreamingProviders] Filtered to', filteredProviderMap.size, 'main providers')
+    
     // Convert to array and sort by name
-    const streamers = Array.from(providerMap.entries())
+    const streamers = Array.from(filteredProviderMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name))
     
+    console.log('✅ [fetchStreamingProviders] Returning', streamers.length, 'streaming providers:', streamers)
     return { streamers, error: null }
   } catch (error) {
-    console.error('Error in fetchStreamingProviders:', error)
+    console.error('❌ [fetchStreamingProviders] Error:', error)
     return { streamers: [], error }
   }
 }
@@ -1142,7 +1256,7 @@ export async function searchShowsDatabase(params: {
       
       const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
       
-      const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${batchSize}&offset=${offset}${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
+      const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${batchSize}&offset=${offset}${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
       
       batchPromises.push(
         fetch(url, { method: 'GET', headers })
@@ -1182,7 +1296,34 @@ export async function searchShowsDatabase(params: {
       const beforeCount = allShows.length
       allShows = allShows.filter((show: any) => {
         if (!show.streaming_info?.US) return false
-        const showProviders = show.streaming_info.US.map((p: any) => p.provider_id)
+        
+        // Handle both array format and object format with ads/flatrate
+        let showProviders: number[] = []
+        
+        if (Array.isArray(show.streaming_info.US)) {
+          // Old format: direct array
+          showProviders = show.streaming_info.US.map((p: any) => p.provider_id).filter(Boolean)
+        } else if (typeof show.streaming_info.US === 'object') {
+          // New format: object with ads, flatrate, etc.
+          const usInfo = show.streaming_info.US
+          const allProviders: any[] = []
+          
+          if (usInfo.flatrate && Array.isArray(usInfo.flatrate)) {
+            allProviders.push(...usInfo.flatrate)
+          }
+          if (usInfo.ads && Array.isArray(usInfo.ads)) {
+            allProviders.push(...usInfo.ads)
+          }
+          if (usInfo.rent && Array.isArray(usInfo.rent)) {
+            allProviders.push(...usInfo.rent)
+          }
+          if (usInfo.buy && Array.isArray(usInfo.buy)) {
+            allProviders.push(...usInfo.buy)
+          }
+          
+          showProviders = allProviders.map((p: any) => p.provider_id).filter(Boolean)
+        }
+        
         return params.streamerIds!.some(streamerId => showProviders.includes(streamerId))
       })
       console.log(`🔍 [searchShowsDatabase] After streaming filter: ${beforeCount} -> ${allShows.length}`)
@@ -1704,7 +1845,7 @@ export async function fetchShowByImdbId(
       'Content-Type': 'application/json'
     }
 
-    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&imdb_id=eq.${imdbId}&limit=1`
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&imdb_id=eq.${imdbId}&limit=1`
     
     const response = await fetch(url, { method: 'GET', headers })
     

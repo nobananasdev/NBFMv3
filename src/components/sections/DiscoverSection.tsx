@@ -32,7 +32,7 @@ function DiscoverContent() {
     isPreloading,
     preloadNext
   } = useDiscoverShows(20)
-  const { setFilterOptions, filters } = useFilter()
+  const { setFilterOptions, filters, isApplyingFilters } = useFilter()
   const observerRef = useRef<HTMLDivElement>(null)
   const preloadObserverRef = useRef<HTMLDivElement>(null)
 
@@ -52,13 +52,21 @@ function DiscoverContent() {
   // Load filter options on mount
   useEffect(() => {
     const loadFilterOptions = async () => {
+      console.log('🔍 [DiscoverSection] Loading filter options...')
       const result = await fetchFilterOptions()
-      if (!result.error) {
+      if (result.error) {
+        console.error('❌ [DiscoverSection] Filter options error:', result.error)
+      } else {
+        console.log('✅ [DiscoverSection] Filter options loaded:', {
+          genres: result.options.genres.length,
+          streamers: result.options.streamers.length,
+          yearRange: result.options.yearRange
+        })
         setFilterOptions(result.options)
       }
     }
     loadFilterOptions()
-  }, [setFilterOptions])
+  }, []) // Remove setFilterOptions from dependency array to prevent infinite loop
 
   // Debug info
   console.log('🎬 DiscoverSection render:', {
@@ -289,20 +297,34 @@ function DiscoverContent() {
     }
   }, [isSearchActive, searchQuery, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user])
 
-  // Effective values for UI
+  // Effective values for UI - keep existing shows visible during filter application
   const effectiveShows = isSearchActive ? searchResults : shows
   const effectiveLoading = isSearchActive ? searchLoading : loading
   const effectiveError = isSearchActive ? searchError : error
   const effectiveHasMore = isSearchActive ? searchHasMore : hasMore
+  
+  // Show loading state only when no content exists or during initial load
+  const showLoadingState = effectiveLoading && effectiveShows.length === 0
+  // Show inline loading indicator when applying filters with existing content
+  const showInlineLoading = (isApplyingFilters || (effectiveLoading && effectiveShows.length > 0)) && !isSearchActive
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="relative space-y-6">
         {/* Controls row: count + Search + Sort/Filter */}
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-500">
-            {effectiveShows.length > 0 &&
+            {effectiveShows.length > 0 && !showInlineLoading &&
               `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
+            {showInlineLoading && (
+              <span className="inline-flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Loading filtered content...</span>
+              </span>
+            )}
           </div>
           <div className="flex gap-2 sm:gap-4">
             {/* Search pill (same style as Sort pills) */}
@@ -357,19 +379,26 @@ function DiscoverContent() {
           </div>
         )}
 
-        <ShowsList
-          shows={effectiveShows}
-          loading={effectiveLoading}
-          error={effectiveError}
-          onShowAction={handleShowAction}
-          emptyMessage={
-            isSearchActive
-              ? 'No results found. Try another search term.'
-              : user
-              ? 'No new shows to discover right now. Check back later!'
-              : 'Sign in to get personalized recommendations and discover new shows!'
-          }
-        />
+        {/* Shows list with smooth transition during filter application */}
+        <div className={`transition-opacity duration-200 ${showInlineLoading ? 'opacity-40' : 'opacity-100'}`}>
+          <ShowsList
+            shows={effectiveShows}
+            loading={showLoadingState}
+            error={effectiveError}
+            onShowAction={handleShowAction}
+            emptyMessage={
+              isSearchActive
+                ? 'No results found. Try another search term.'
+                : user
+                ? 'No new shows to discover right now. Check back later!'
+                : 'Sign in to get personalized recommendations and discover new shows!'
+            }
+            preloadedShows={!isSearchActive ? preloadedShows : []}
+            onNearEnd={!isSearchActive ? preloadNext : undefined}
+            hasMore={effectiveHasMore}
+            searchQuery={isSearchActive ? searchQuery : undefined}
+          />
+        </div>
 
         {/* Preload Trigger - positioned earlier in the content (disabled in search mode) */}
         {!isSearchActive && hasMore && shows.length > 5 && (

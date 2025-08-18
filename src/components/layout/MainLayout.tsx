@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { FilterProvider } from '@/contexts/FilterContext'
 import { Header } from './Header'
 import Navigation from './Navigation'
 import { Auth } from '../auth/Auth'
@@ -44,12 +45,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Navigation />
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-5xl">
-        {renderSection()}
-      </main>
-    </div>
+    <FilterProvider>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Navigation />
+        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-5xl">
+          {renderSection()}
+        </main>
+      </div>
+    </FilterProvider>
   )
 }
