@@ -111,9 +111,6 @@ function DiscoverContent() {
                   query: searchQuery,
                   limit: 20,
                   offset: searchOffset,
-                  genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
-                  yearRange: filters.yearRange,
-                  streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
                   excludeUserShows: !!user,
                   userId: user?.id,
                   sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
@@ -143,7 +140,7 @@ function DiscoverContent() {
         }
       }
     },
-    [isSearchActive, searchHasMore, searchLoading, searchQuery, searchOffset, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user, hasMore, loading, fetchMore]
+    [isSearchActive, searchHasMore, searchLoading, searchQuery, searchOffset, user, hasMore, loading, fetchMore]
   )
 
   // Preload observer - triggers much earlier (when user is about halfway through current content)
@@ -217,9 +214,6 @@ function DiscoverContent() {
           query: q,
           limit: 20,
           offset: 0,
-          genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
-          yearRange: filters.yearRange,
-          streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
           excludeUserShows: !!user,
           userId: user?.id,
           sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
@@ -238,7 +232,7 @@ function DiscoverContent() {
     } finally {
       setSearchLoading(false)
     }
-  }, [filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user, searchSortBy])
+  }, [user, searchSortBy])
 
   const clearSearch = useCallback(() => {
     setIsSearchActive(false)
@@ -274,9 +268,6 @@ function DiscoverContent() {
         query: searchQuery,
         limit: 20,
         offset: 0,
-        genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
-        yearRange: filters.yearRange,
-        streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
         excludeUserShows: !!user,
         userId: user?.id,
         sortBy: newSort === 'rating' ? 'by_rating' : newSort
@@ -295,7 +286,7 @@ function DiscoverContent() {
     } finally {
       setSearchLoading(false)
     }
-  }, [isSearchActive, searchQuery, filters.selectedGenres, filters.yearRange, filters.selectedStreamers, user])
+  }, [isSearchActive, searchQuery, user])
 
   // Effective values for UI - keep existing shows visible during filter application
   const effectiveShows = isSearchActive ? searchResults : shows

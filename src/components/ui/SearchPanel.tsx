@@ -70,9 +70,6 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
 
         const { suggestions, error } = await quickSearchDatabase({
           prefix: q,
-          genreIds: filters.selectedGenres.length > 0 ? filters.selectedGenres : undefined,
-          yearRange: filters.yearRange,
-          streamerIds: filters.selectedStreamers.length > 0 ? filters.selectedStreamers : undefined,
           limit: 10,
           userId: user?.id
         })
@@ -94,7 +91,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
     }, 300)
 
     return () => clearTimeout(h)
-  }, [input, isOpen, filters.selectedGenres, filters.yearRange, filters.selectedStreamers])
+  }, [input, isOpen, user?.id])
 
   const handleCommit = () => {
     const q = input.trim()
