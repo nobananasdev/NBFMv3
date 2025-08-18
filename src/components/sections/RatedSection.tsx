@@ -114,6 +114,9 @@ export function RatedSection() {
             error={error}
             onShowAction={handleShowAction}
             emptyMessage="You haven't rated any shows yet. Start rating in Discover!"
+            preloadedShows={preloadedShows}
+            onNearEnd={preloadNext}
+            hasMore={hasMore}
           />
 
           {/* Preload Trigger */}

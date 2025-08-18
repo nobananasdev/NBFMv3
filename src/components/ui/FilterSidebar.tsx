@@ -13,7 +13,9 @@ export default function FilterSidebar() {
     setYearRange,
     setSelectedStreamers,
     clearFilters,
-    hasActiveFilters
+    hasActiveFilters,
+    isApplyingFilters,
+    setIsApplyingFilters
   } = useFilter()
 
   const [isAnimating, setIsAnimating] = useState(false)
@@ -66,6 +68,16 @@ export default function FilterSidebar() {
     }
   }, [isFilterOpen, closeFilter])
 
+  console.log('🔍 [FilterSidebar] Render state:', {
+    isFilterOpen,
+    filterOptions: filterOptions ? {
+      genres: filterOptions.genres?.length || 0,
+      streamers: filterOptions.streamers?.length || 0,
+      yearRange: filterOptions.yearRange,
+      streamersData: filterOptions.streamers
+    } : null
+  })
+
   if (!isFilterOpen) return null
 
   const handleGenreChange = (genreId: number, checked: boolean) => {
@@ -86,6 +98,10 @@ export default function FilterSidebar() {
 
   // Apply staged filters in one commit to avoid intermediate fetches/jitter
   const applyFilters = () => {
+    // Don't set isApplyingFilters here - let useShows hook manage this state
+    // to avoid timing conflicts and ensure proper coordination with data loading
+    
+    // Apply filters immediately for responsive user experience
     setSelectedGenres(stagedGenres)
     setSelectedStreamers(stagedStreamers)
     setYearRange(stagedYearRange)
@@ -151,17 +167,19 @@ export default function FilterSidebar() {
           {filterOptions?.genres && filterOptions.genres.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3">Genres</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
                 {filterOptions.genres.map((genre) => (
-                  <label key={genre.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={stagedGenres.includes(genre.id)}
-                      onChange={(e) => handleGenreChange(genre.id, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">{genre.name}</span>
-                  </label>
+                  <button
+                    key={genre.id}
+                    onClick={() => handleGenreChange(genre.id, !stagedGenres.includes(genre.id))}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                      stagedGenres.includes(genre.id)
+                        ? 'bg-[#3a3a3a] text-white border-[#3a3a3a] shadow-sm'
+                        : 'bg-[#FFFCF5] text-[#292929] border-[#8e8e8e] hover:border-[#3a3a3a] hover:bg-gray-50'
+                    }`}
+                  >
+                    {genre.name}
+                  </button>
                 ))}
               </div>
             </div>
@@ -213,17 +231,19 @@ export default function FilterSidebar() {
           {filterOptions?.streamers && filterOptions.streamers.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-900 mb-3">Streaming Providers</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
                 {filterOptions.streamers.map((streamer) => (
-                  <label key={streamer.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={stagedStreamers.includes(streamer.id)}
-                      onChange={(e) => handleStreamerChange(streamer.id, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">{streamer.name}</span>
-                  </label>
+                  <button
+                    key={streamer.id}
+                    onClick={() => handleStreamerChange(streamer.id, !stagedStreamers.includes(streamer.id))}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 ${
+                      stagedStreamers.includes(streamer.id)
+                        ? 'bg-[#3a3a3a] text-white border-[#3a3a3a] shadow-sm'
+                        : 'bg-[#FFFCF5] text-[#292929] border-[#8e8e8e] hover:border-[#3a3a3a] hover:bg-gray-50'
+                    }`}
+                  >
+                    {streamer.name}
+                  </button>
                 ))}
               </div>
             </div>
@@ -242,10 +262,24 @@ export default function FilterSidebar() {
           )}
           <button
             onClick={applyFilters}
-            disabled={!isDirty}
-            className={`w-full px-6 py-3 text-white font-semibold rounded-3xl transition-colors ${isDirty ? 'bg-[#3a3a3a] hover:bg-[#2a2a2a]' : 'bg-gray-300 cursor-not-allowed'}`}
+            disabled={!isDirty || isApplyingFilters}
+            className={`w-full px-6 py-3 text-white font-semibold rounded-3xl transition-colors flex items-center justify-center gap-2 ${
+              isDirty && !isApplyingFilters
+                ? 'bg-[#3a3a3a] hover:bg-[#2a2a2a]'
+                : 'bg-gray-300 cursor-not-allowed'
+            }`}
           >
-            Apply Filters
+            {isApplyingFilters ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Applying...
+              </>
+            ) : (
+              'Apply Filters'
+            )}
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, memo } from 'react'
+import React, { useState, useEffect, memo, useRef } from 'react'
 import Image from 'next/image'
 import { ShowWithGenres } from '@/lib/shows'
 import { ShowStatus } from '@/types/database'
@@ -14,6 +14,7 @@ import {
   updateUserShowStatus
 } from '@/lib/shows'
 import { highlightText, highlightTextArray } from '@/lib/textHighlight'
+import { isImagePreloaded, getOptimizedImageUrl, generateBlurPlaceholder } from '@/lib/imagePreloader'
 
 interface ShowCardProps {
   show: ShowWithGenres
@@ -70,6 +71,13 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const [shouldFadeOut, setShouldFadeOut] = useState(false)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [shouldFadeOutSuccess, setShouldFadeOutSuccess] = useState(false)
+  
+  // Image loading states
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [shouldLoadImage, setShouldLoadImage] = useState(true) // Always load immediately
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
+  const imageRef = useRef<HTMLDivElement>(null)
 
   const posterUrl = getPosterUrl(show)
   const streamingProviders = filterStreamingProviders(show)
@@ -77,8 +85,29 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const seriesInfo = formatSeriesInfo(show)
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
-  // Use DB-provided tiny thumb if available for a fast blur-up; fallback to undefined
-  const blurDataURL = (show as any).poster_thumb_url as string | undefined
+  
+  // Get optimized image URL and generate blur placeholder
+  const optimizedUrl = posterUrl ? getOptimizedImageUrl(posterUrl) : null
+  const isPreloaded = optimizedUrl ? isImagePreloaded(optimizedUrl) : false
+  
+  // Use DB-provided tiny thumb if available, otherwise generate blur placeholder
+  const blurDataURL = (show as any).poster_thumb_url as string | undefined ||
+    (typeof window !== 'undefined' ? generateBlurPlaceholder() : undefined)
+
+  // Check if image is preloaded and set loaded state
+  useEffect(() => {
+    if (optimizedUrl && isPreloaded && !imageLoaded) {
+      console.log('📸 [ShowCard] Using preloaded optimized image for:', show.name)
+      setImageLoaded(true)
+      setShouldLoadImage(true)
+      setCurrentImageUrl(optimizedUrl)
+    }
+  }, [optimizedUrl, isPreloaded, imageLoaded, show.name])
+
+  // Remove lazy loading - load all images immediately
+  useEffect(() => {
+    setShouldLoadImage(true)
+  }, [])
 
   // Get only our_score rating
   const getRating = () => {
@@ -154,13 +183,13 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
 
   if (actionResult) {
     return (
-      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center min-h-[400px] transition-[opacity,transform] duration-400 ease-in-out ${
+      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center transition-[opacity,transform] duration-400 ease-in-out ${
         showSuccessMessage && !shouldFadeOutSuccess
           ? 'opacity-100 scale-100 animate-success-bounce'
           : shouldFadeOutSuccess
             ? 'opacity-0 scale-95 transform -translate-y-4'
             : 'opacity-0 scale-95'
-      }`}>
+      }`} style={{ minHeight: '420px' }}>
         <div className="text-center">
           <div className="text-2xl font-bold text-green-600 mb-2">
             {actionResult.label}
@@ -174,9 +203,9 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   }
 
   return (
-    <div className={`cv-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-opacity duration-200 ease-in-out ${
+    <div className={`w-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-opacity duration-200 ease-in-out ${
       shouldFadeOut ? 'opacity-0' : 'opacity-100'
-    }`}>
+    }`} style={{ minHeight: '420px' }}>
       {/* Rating Badge - Top Right */}
       {rating && (
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-[#f4f4f4] border border-[#8e8e8e] rounded-[15px] sm:rounded-[20px] px-2 py-1 sm:px-3 sm:py-1 flex items-center gap-1 sm:gap-2 z-10">
@@ -197,34 +226,115 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
       <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
         {/* Poster - Top on mobile, Left on desktop */}
         <div className="flex-shrink-0 self-center lg:self-start">
-          <div className="w-[160px] h-[230px] sm:w-[180px] sm:h-[260px] lg:w-[240px] lg:h-[320px] rounded-[15px] sm:rounded-[20px] overflow-hidden bg-gray-100 relative">
-            {posterUrl ? (
+          <div
+            ref={imageRef}
+            className="w-[160px] h-[230px] sm:w-[180px] sm:h-[260px] lg:w-[240px] lg:h-[320px] rounded-[15px] sm:rounded-[20px] overflow-hidden bg-gray-100 relative flex-shrink-0"
+            style={{
+              minWidth: '160px',
+              minHeight: '230px',
+              aspectRatio: '160/230'
+            }}
+          >
+            {/* Enhanced blur placeholder with better visual feedback */}
+            <div className={`absolute inset-0 transition-opacity duration-500 ${
+              (imageLoaded || isPreloaded || imageError) ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`} style={{ borderRadius: '15px' }}>
+              {blurDataURL ? (
+                <img
+                  src={blurDataURL}
+                  alt=""
+                  className="w-full h-full object-cover blur-sm"
+                  style={{ borderRadius: '15px' }}
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-gray-400 text-center">
+                      <div className="text-xl sm:text-2xl lg:text-3xl mb-2">📺</div>
+                      <div className="text-xs sm:text-sm">Loading...</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Loading progress indicator */}
+              <div className="absolute bottom-2 left-2 right-2 h-1 bg-gray-300/20 rounded-full overflow-hidden">
+                <div className="h-full bg-[#fbc72c] animate-pulse rounded-full w-1/3"></div>
+              </div>
+            </div>
+
+            {optimizedUrl && shouldLoadImage && !imageError ? (
               <Image
-                src={posterUrl}
+                src={optimizedUrl}
                 alt={show.name}
                 fill
-                className="object-cover"
+                className={`object-cover transition-all duration-500 ${
+                  imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+                }`}
                 sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 240px"
                 style={{ borderRadius: '15px' }}
-                quality={60}
+                quality={85}
                 priority={priority}
                 fetchPriority={priority ? 'high' : 'auto'}
                 placeholder={blurDataURL ? 'blur' : 'empty'}
                 blurDataURL={blurDataURL}
+                onLoad={() => {
+                  setImageLoaded(true)
+                  setCurrentImageUrl(optimizedUrl)
+                  console.log('📸 [ShowCard] Image loaded successfully for:', show.name)
+                }}
+                onError={(error) => {
+                  console.warn('📸 [ShowCard] Image load error for:', show.name, error)
+                  // Try fallback to original URL if we were using optimized
+                  if (optimizedUrl !== posterUrl && posterUrl) {
+                    console.log('📸 [ShowCard] Trying fallback to original URL for:', show.name)
+                    setCurrentImageUrl(posterUrl)
+                  } else {
+                    setImageError(true)
+                    setImageLoaded(true)
+                  }
+                }}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200" style={{ borderRadius: '15px' }}>
-                <div className="text-gray-400 text-center">
+            ) : currentImageUrl && currentImageUrl !== optimizedUrl && !imageError ? (
+              // Fallback image component
+              <Image
+                src={currentImageUrl}
+                alt={show.name}
+                fill
+                className={`object-cover transition-all duration-500 ${
+                  imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+                }`}
+                sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 240px"
+                style={{ borderRadius: '15px' }}
+                quality={75}
+                priority={priority}
+                fetchPriority={priority ? 'high' : 'auto'}
+                placeholder={blurDataURL ? 'blur' : 'empty'}
+                blurDataURL={blurDataURL}
+                onLoad={() => {
+                  setImageLoaded(true)
+                  console.log('📸 [ShowCard] Fallback image loaded for:', show.name)
+                }}
+                onError={() => {
+                  console.warn('📸 [ShowCard] Fallback image also failed for:', show.name)
+                  setImageError(true)
+                  setImageLoaded(true)
+                }}
+              />
+            ) : (!optimizedUrl || imageError) ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300" style={{ borderRadius: '15px' }}>
+                <div className="text-gray-500 text-center">
                   <div className="text-xl sm:text-2xl lg:text-3xl mb-2">📺</div>
-                  <div className="text-xs sm:text-sm">No Image</div>
+                  <div className="text-xs sm:text-sm font-medium">Image Unavailable</div>
                 </div>
               </div>
-            )}
+            ) : null}
+
           </div>
         </div>
 
         {/* Content - Bottom on mobile, Right on desktop */}
-        <div className="flex-1 flex flex-col justify-between min-h-0 text-center lg:text-left">
+        <div className="flex-1 flex flex-col justify-between text-center lg:text-left" style={{ minHeight: '320px' }}>
           <div>
             {/* Title and Year */}
             <div className="mb-2 sm:mb-3 lg:mb-4 lg:pr-24">

@@ -19,6 +19,7 @@ interface FilterContextType {
   isFilterOpen: boolean
   filters: FilterState
   filterOptions: FilterOptions | null
+  isApplyingFilters: boolean
   
   // Actions
   toggleFilter: () => void
@@ -28,6 +29,7 @@ interface FilterContextType {
   setSelectedStreamers: (streamers: number[]) => void
   clearFilters: () => void
   setFilterOptions: (options: FilterOptions) => void
+  setIsApplyingFilters: (loading: boolean) => void
   
   // Computed
   hasActiveFilters: boolean
@@ -38,6 +40,7 @@ export const FilterContext = createContext<FilterContextType | undefined>(undefi
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null)
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false)
   const [filters, setFilters] = useState<FilterState>({
     selectedGenres: [],
     yearRange: [1950, 2025], // Wider default range, will be updated when options are loaded
@@ -93,13 +96,15 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         isFilterOpen,
         filters,
         filterOptions,
+        isApplyingFilters,
         toggleFilter,
         closeFilter,
         setSelectedGenres,
         setYearRange,
         setSelectedStreamers,
         clearFilters,
-        setFilterOptions,
+        setFilterOptions: setFilterOptionsAndUpdateDefaults,
+        setIsApplyingFilters,
         hasActiveFilters
       }}
     >

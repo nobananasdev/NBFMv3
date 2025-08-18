@@ -112,6 +112,9 @@ export function WatchlistSection() {
             onShowAction={handleShowAction}
             emptyMessage="Your watchlist is empty. Start adding shows from Discover!"
             hiddenActions={['watchlist']}
+            preloadedShows={preloadedShows}
+            onNearEnd={preloadNext}
+            hasMore={hasMore}
           />
 
           {/* Preload Trigger */}
