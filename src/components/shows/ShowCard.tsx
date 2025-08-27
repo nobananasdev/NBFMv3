@@ -31,32 +31,36 @@ const ACTION_BUTTONS = [
     label: 'Add To Watchlist',
     successLabel: 'Added to Watchlist',
     icon: '/icons/add to watchlist.svg',
-    className: 'bg-[#fbc72c] text-[#292929] font-bold',
-    hoverClassName: 'hover:bg-[#e6b429]'
+    // Yellow-orange gradient similar to navigation watchlist button
+    className: 'action-btn watchlist-btn',
+    hoverClassName: ''
   },
   {
     status: 'not_for_me' as ShowStatus,
     label: 'Not For Me',
     successLabel: 'Bananas! 🍌',
     icon: '/icons/not for me.svg',
-    className: 'bg-[#FFFCF5] border border-[#8e8e8e] text-[#292929] font-bold',
-    hoverClassName: 'hover:bg-gray-50'
+    // Worst rating - red accent glass
+    className: 'action-btn rate-bad ',
+    hoverClassName: ''
   },
   {
     status: 'liked_it' as ShowStatus,
     label: 'Like It',
     successLabel: 'Liked it! 👍',
     icon: '/icons/like it.svg',
-    className: 'bg-[#FFFCF5] border border-[#8e8e8e] text-[#292929] font-bold',
-    hoverClassName: 'hover:bg-gray-50'
+    // Mid rating - amber accent glass
+    className: 'action-btn rate-mid ',
+    hoverClassName: ''
   },
   {
     status: 'loved_it' as ShowStatus,
     label: 'Love It',
     successLabel: 'Loved it! ❤️',
     icon: '/icons/love it.svg',
-    className: 'bg-[#FFFCF5] border border-[#8e8e8e] text-[#292929] font-bold',
-    hoverClassName: 'hover:bg-gray-50'
+    // Best rating - green accent glass
+    className: 'action-btn rate-good ',
+    hoverClassName: ''
   }
 ]
 
@@ -75,7 +79,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   // Image loading states
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
-  const [shouldLoadImage, setShouldLoadImage] = useState(true) // Always load immediately
+  const [shouldLoadImage, setShouldLoadImage] = useState(true)
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
 
@@ -183,18 +187,21 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
 
   if (actionResult) {
     return (
-      <div className={`bg-[#FFFCF5] rounded-[15px] border border-[#8e8e8e] p-8 flex items-center justify-center transition-[opacity,transform] duration-400 ease-in-out ${
-        showSuccessMessage && !shouldFadeOutSuccess
+      <div className={`
+        show-card-modern p-8 flex items-center justify-center min-h-[500px]
+        transition-all duration-500 ease-out
+        ${showSuccessMessage && !shouldFadeOutSuccess
           ? 'opacity-100 scale-100 animate-success-bounce'
           : shouldFadeOutSuccess
             ? 'opacity-0 scale-95 transform -translate-y-4'
             : 'opacity-0 scale-95'
-      }`} style={{ minHeight: '420px' }}>
+        }
+      `}>
         <div className="text-center">
-          <div className="text-2xl font-bold text-green-600 mb-2">
+          <div className="text-3xl font-bold gradient-text mb-4">
             {actionResult.label}
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-lg text-white/70">
             {show.name}
           </div>
         </div>
@@ -203,77 +210,71 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   }
 
   return (
-    <div className={`w-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative transition-opacity duration-200 ease-in-out ${
-      shouldFadeOut ? 'opacity-0' : 'opacity-100'
-    }`} style={{ minHeight: '420px' }}>
-      {/* Rating Badge - Top Right */}
+    <div className={`show-card-modern p-6 lg:p-8 relative group transition-all duration-500 ease-out min-h-[500px] ${shouldFadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+      {/* Rating Badge */}
       {rating && (
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-[#f4f4f4] border border-[#8e8e8e] rounded-[15px] sm:rounded-[20px] px-2 py-1 sm:px-3 sm:py-1 flex items-center gap-1 sm:gap-2 z-10">
-          <Image
-            src="/icons/star.svg"
-            alt="Star"
-            width={16}
-            height={16}
-            className="w-3 h-3 sm:w-4 sm:h-4"
-          />
-          <span className="font-bold text-[18px] sm:text-[18px] lg:text-[16px] text-[#292929]">
-            {rating.value}
-          </span>
+        <div className="rating-badge">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span className="font-bold text-white text-lg">
+              {rating.value}
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Main Content - Responsive Layout */}
-      <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
-        {/* Poster - Top on mobile, Left on desktop */}
+      {/* Main Content Layout */}
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        {/* Poster Section */}
         <div className="flex-shrink-0 self-center lg:self-start">
           <div
             ref={imageRef}
-            className="w-[160px] h-[230px] sm:w-[180px] sm:h-[260px] lg:w-[240px] lg:h-[320px] rounded-[15px] sm:rounded-[20px] overflow-hidden bg-gray-100 relative flex-shrink-0"
-            style={{
-              minWidth: '160px',
-              minHeight: '230px',
-              aspectRatio: '160/230'
-            }}
+            className="relative w-[200px] h-[300px] sm:w-[220px] sm:h-[330px] lg:w-[280px] lg:h-[420px] rounded-3xl overflow-hidden group-hover:shadow-2xl transition-all duration-500"
           >
-            {/* Enhanced blur placeholder with better visual feedback */}
-            <div className={`absolute inset-0 transition-opacity duration-500 ${
-              (imageLoaded || isPreloaded || imageError) ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`} style={{ borderRadius: '15px' }}>
+            {/* Enhanced blur placeholder */}
+            <div className={`
+              absolute inset-0 transition-opacity duration-500 rounded-3xl
+              ${(imageLoaded || isPreloaded || imageError) ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+            `}>
               {blurDataURL ? (
                 <img
                   src={blurDataURL}
                   alt=""
-                  className="w-full h-full object-cover blur-sm"
-                  style={{ borderRadius: '15px' }}
+                  className="w-full h-full object-cover blur-sm rounded-3xl"
                 />
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-gray-400 text-center">
-                      <div className="text-xl sm:text-2xl lg:text-3xl mb-2">📺</div>
-                      <div className="text-xs sm:text-sm">Loading...</div>
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-3xl">
+                  <div className="absolute inset-0 skeleton rounded-3xl">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-white/40 text-center">
+                        <div className="text-4xl mb-4">📺</div>
+                        <div className="text-sm">Loading...</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
               
               {/* Loading progress indicator */}
-              <div className="absolute bottom-2 left-2 right-2 h-1 bg-gray-300/20 rounded-full overflow-hidden">
-                <div className="h-full bg-[#fbc72c] animate-pulse rounded-full w-1/3"></div>
+              <div className="absolute bottom-4 left-4 right-4 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse rounded-full w-1/3"></div>
               </div>
             </div>
 
+            {/* Main Image */}
             {optimizedUrl && shouldLoadImage && !imageError ? (
               <Image
                 src={optimizedUrl}
                 alt={show.name}
                 fill
-                className={`object-cover transition-all duration-500 ${
-                  imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-                }`}
-                sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 240px"
-                style={{ borderRadius: '15px' }}
-                quality={85}
+                className={`
+                  crisp-image object-cover transition-all duration-500 rounded-3xl
+                  ${imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}
+                `}
+                sizes="(max-width: 640px) 200px, (max-width: 1024px) 220px, 280px"
+                quality={90}
                 priority={priority}
                 fetchPriority={priority ? 'high' : 'auto'}
                 placeholder={blurDataURL ? 'blur' : 'empty'}
@@ -285,7 +286,6 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 }}
                 onError={(error) => {
                   console.warn('📸 [ShowCard] Image load error for:', show.name, error)
-                  // Try fallback to original URL if we were using optimized
                   if (optimizedUrl !== posterUrl && posterUrl) {
                     console.log('📸 [ShowCard] Trying fallback to original URL for:', show.name)
                     setCurrentImageUrl(posterUrl)
@@ -296,17 +296,17 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 }}
               />
             ) : currentImageUrl && currentImageUrl !== optimizedUrl && !imageError ? (
-              // Fallback image component
+              // Fallback image
               <Image
                 src={currentImageUrl}
                 alt={show.name}
                 fill
-                className={`object-cover transition-all duration-500 ${
-                  imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-                }`}
-                sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 240px"
-                style={{ borderRadius: '15px' }}
-                quality={75}
+                className={`
+                  crisp-image object-cover transition-all duration-500 rounded-3xl
+                  ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}
+                `}
+                sizes="(max-width: 640px) 200px, (max-width: 1024px) 220px, 280px"
+                quality={80}
                 priority={priority}
                 fetchPriority={priority ? 'high' : 'auto'}
                 placeholder={blurDataURL ? 'blur' : 'empty'}
@@ -322,26 +322,28 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 }}
               />
             ) : (!optimizedUrl || imageError) ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300" style={{ borderRadius: '15px' }}>
-                <div className="text-gray-500 text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl mb-2">📺</div>
-                  <div className="text-xs sm:text-sm font-medium">Image Unavailable</div>
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl">
+                <div className="text-white/50 text-center">
+                  <div className="text-4xl mb-4">📺</div>
+                  <div className="text-sm font-medium">Image Unavailable</div>
                 </div>
               </div>
             ) : null}
 
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"></div>
           </div>
         </div>
 
-        {/* Content - Bottom on mobile, Right on desktop */}
-        <div className="flex-1 flex flex-col justify-between text-center lg:text-left" style={{ minHeight: '320px' }}>
-          <div>
+        {/* Content Section */}
+        <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[300px] lg:min-h-[420px]">
+          <div className="space-y-4 lg:space-y-6">
             {/* Title and Year */}
-            <div className="mb-2 sm:mb-3 lg:mb-4 lg:pr-24">
-              <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-[#000000] mb-1">
-                {searchQuery ? highlightText(show.name, searchQuery, 'bg-yellow-200 px-1 py-0.5 rounded font-bold') : show.name}
+            <div className="lg:pr-20">
+              <h3 className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-tight text-white mb-2">
+                {searchQuery ? highlightText(show.name, searchQuery, 'bg-yellow-400 text-black px-1 rounded font-bold') : show.name}
                 {airDate && (
-                  <span className="font-normal text-[#7b7b7b] ml-1 sm:ml-2 text-[14px] sm:text-[16px] lg:text-[24px]">
+                  <span className="font-normal text-gray-300 ml-2 text-lg sm:text-xl lg:text-2xl">
                     ({airDate})
                   </span>
                 )}
@@ -349,60 +351,53 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             </div>
 
             {/* Genres and Series Info */}
-            <div className="mb-3 sm:mb-4 lg:mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-1 sm:gap-2 text-[11px] sm:text-[12px] lg:text-[14px]">
-                {genreNames.length > 0 && (
-                  <span className="font-semibold text-[#000000]">
-                    {genreNames.join(', ')}
-                  </span>
-                )}
-                {genreNames.length > 0 && seriesInfo && (
-                  <span className="text-[#8e8e8e] hidden sm:inline">•</span>
-                )}
-                {seriesInfo && (
-                  <span className="font-normal text-[#000000]">
-                    {seriesInfo}
-                  </span>
-                )}
-              </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2 text-sm lg:text-base">
+              {genreNames.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+                  {genreNames.slice(0, 3).map((genre, index) => (
+                    <span key={index} className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium">
+                      {genre}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {seriesInfo && (
+                <span className="text-gray-300 font-medium">
+                  {seriesInfo}
+                </span>
+              )}
             </div>
 
             {/* Description */}
             {description && (
-              <div className="mb-3 sm:mb-4 lg:mb-6">
-                <p className="font-normal text-[13px] sm:text-[14px] lg:text-[16px] leading-[18px] sm:leading-[20px] lg:leading-[24px] text-[#000000]">
-                  {description}
-                </p>
-              </div>
+              <p className="text-gray-200 text-sm lg:text-base leading-relaxed line-clamp-3">
+                {description}
+              </p>
             )}
 
-            {/* Creators and Main Cast */}
+            {/* Creators and Cast */}
             {(show.creators && show.creators.length > 0) || (show.main_cast && show.main_cast.length > 0) ? (
-              <div className="mb-3 sm:mb-4 lg:mb-6">
+              <div className="space-y-2">
                 {show.creators && show.creators.length > 0 && (
-                  <div className="mb-1 sm:mb-2">
-                    <span className="font-semibold text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000]">
-                      Creators:
-                    </span>
-                    <span className="font-normal text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000] ml-1">
-                      {searchQuery ? highlightTextArray(show.creators, searchQuery, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold') : show.creators.join(', ')}
+                  <div>
+                    <span className="font-semibold text-white text-sm">Creators: </span>
+                    <span className="text-gray-300 text-sm">
+                      {searchQuery ? highlightTextArray(show.creators, searchQuery, ', ', 'bg-yellow-400 text-black px-1 rounded font-semibold') : show.creators.join(', ')}
                     </span>
                   </div>
                 )}
                 {show.main_cast && show.main_cast.length > 0 && (
                   <div>
-                    <span className="font-semibold text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000]">
-                      Cast:
-                    </span>
-                    <span className="font-normal text-[11px] sm:text-[12px] lg:text-[14px] text-[#000000] ml-1">
+                    <span className="font-semibold text-white text-sm">Cast: </span>
+                    <span className="text-gray-300 text-sm">
                       {searchQuery ? (
                         <>
-                          {highlightTextArray(show.main_cast.slice(0, 5), searchQuery, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
-                          {show.main_cast.length > 5 ? '...' : ''}
+                          {highlightTextArray(show.main_cast.slice(0, 4), searchQuery, ', ', 'bg-yellow-400 text-black px-1 rounded font-semibold')}
+                          {show.main_cast.length > 4 ? '...' : ''}
                         </>
                       ) : (
                         <>
-                          {show.main_cast.slice(0, 5).join(', ')}{show.main_cast.length > 5 ? '...' : ''}
+                          {show.main_cast.slice(0, 4).join(', ')}{show.main_cast.length > 4 ? '...' : ''}
                         </>
                       )}
                     </span>
@@ -412,16 +407,11 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             ) : null}
 
             {/* Streaming Providers and IMDB */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-0 mb-4 sm:mb-6 lg:mb-8">
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 lg:gap-3 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
                 {streamingProviders.slice(0, 2).map((provider) => (
-                  <div
-                    key={provider.provider_id}
-                    className="bg-[#f4f4f4] border border-[#8e8e8e] rounded-[15px] sm:rounded-[20px] px-2 py-1 sm:px-3 sm:py-1 lg:px-6 lg:py-2 flex items-center gap-1 sm:gap-2"
-                  >
-                    <span className="font-semibold text-[9px] sm:text-[10px] lg:text-[12px] text-[#292929]">
-                      {provider.provider_name}
-                    </span>
+                  <div key={provider.provider_id} className="provider-badge">
+                    {provider.provider_name}
                   </div>
                 ))}
               </div>
@@ -431,34 +421,27 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 href={buildImdbUrl(show.imdb_id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-[#fbc72c] rounded-[15px] sm:rounded-[20px] px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2 flex items-center gap-1.5 sm:gap-2 hover:bg-[#e6b429] transition-colors self-center sm:self-start lg:self-auto"
+                className="glass border border-white/20 hover:bg-white/15 text-white px-4 py-2 rounded-xl text-sm font-semibold group inline-flex items-center gap-2 self-center sm:self-start lg:self-auto transition-all duration-300 hover:scale-105 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20"
               >
-                <span className="font-semibold text-[9px] sm:text-[10px] lg:text-[12px] text-[#292929]">
-                  IMDB
-                </span>
-                <Image
-                  src="/icons/arrow-up-right.svg"
-                  alt="External link"
-                  width={16}
-                  height={16}
-                  className="w-3 h-3 sm:w-3 sm:h-3 lg:w-4 lg:h-4"
-                />
+                <span>IMDB</span>
+                <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
               </a>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Action Buttons - Below the main content */}
+      {/* Action Buttons */}
       {showActions && (
         <>
-          {/* Divider Line */}
-          <div className="border-t border-[#8e8e8e] mt-4 sm:mt-6 mb-3 sm:mb-4 lg:mb-6"></div>
+          {/* Divider */}
+          <div className="border-t border-white/20 mt-4 lg:mt-8 mb-4 lg:mb-6"></div>
           
-          <div className="flex flex-col items-center lg:flex-row lg:justify-between gap-3 sm:gap-4">
-            {/* Add To Watchlist - Centered on mobile, left on desktop */}
-            <div className="w-full max-w-[260px] sm:max-w-[280px] lg:w-[240px]">
+          <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
+            {/* Primary Action - Watchlist */}
+            <div className="flex-1 max-w-xs mx-auto lg:mx-0">
               {ACTION_BUTTONS
                 .filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status))
                 .map((button) => {
@@ -468,26 +451,32 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''} w-full`}
+                      className={`
+                        ${button.className} ${button.hoverClassName} w-full group
+                        disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                        transition-all duration-300 px-4 py-3 rounded-xl
+                      `}
                     >
-                      <Image
-                        src={button.icon}
-                        alt={button.label}
-                        width={20}
-                        height={20}
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5"
-                      />
-                      <span className="text-[11px] sm:text-[12px] lg:text-[14px] leading-tight tracking-[0.8px] sm:tracking-[1px] font-bold">
-                        {button.label}
-                      </span>
-                      {isUserRated && <span className="ml-1">✓</span>}
+                      <div className="flex items-center justify-center gap-3">
+                        <Image
+                          src={button.icon}
+                          alt={button.label}
+                          width={20}
+                          height={20}
+                          className="w-5 h-5 brightness-0 invert"
+                        />
+                        <span className="font-bold">
+                          {button.label}
+                        </span>
+                        {isUserRated && <span>✓</span>}
+                      </div>
                     </button>
                   )
                 })}
             </div>
 
-            {/* Rating buttons - Right side */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 justify-center lg:justify-end">
+            {/* Rating Buttons */}
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-end">
               {ACTION_BUTTONS
                 .filter(button => button.status !== 'watchlist' && !hiddenActions.includes(button.status))
                 .map((button) => {
@@ -497,19 +486,25 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       key={button.status}
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
-                      className={`${button.className} ${button.hoverClassName} rounded-[15px] sm:rounded-[20px] px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`
+                        ${button.className} ${button.hoverClassName} group
+                        disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                        transition-all duration-300 px-4 py-3 rounded-xl
+                      `}
                     >
-                      <Image
-                        src={button.icon}
-                        alt={button.label}
-                        width={20}
-                        height={20}
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5"
-                      />
-                      <span className="text-[11px] sm:text-[12px] lg:text-[14px] leading-tight tracking-[0.8px] sm:tracking-[1px] font-bold">
-                        {button.label}
-                      </span>
-                      {isUserRated && <span className="ml-1">✓</span>}
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={button.icon}
+                          alt={button.label}
+                          width={20}
+                          height={20}
+                          className="w-5 h-5 brightness-0 invert"
+                        />
+                        <span className="font-bold">
+                          {button.label}
+                        </span>
+                        {isUserRated && <span>✓</span>}
+                      </div>
                     </button>
                   )
                 })}

@@ -143,65 +143,63 @@ export default function ShowsList({
       <div className={`${className}`}>
         <div className="grid grid-cols-1 gap-6">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="w-auto bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 relative" style={{ minHeight: '420px' }}>
+            <div key={index} className="show-card-modern p-6 lg:p-8 relative" style={{ minHeight: '500px' }}>
               <div className="animate-pulse">
                 {/* Main Content - Responsive Layout - matches ShowCard exactly */}
-                <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
                   {/* Poster - matches ShowCard image dimensions */}
                   <div className="flex-shrink-0 self-center lg:self-start">
-                    <div className="w-[160px] h-[230px] sm:w-[180px] sm:h-[260px] lg:w-[240px] lg:h-[320px] bg-gray-200 rounded-[15px] sm:rounded-[20px]"></div>
+                    <div className="w-[200px] h-[300px] sm:w-[220px] sm:h-[330px] lg:w-[280px] lg:h-[420px] skeleton rounded-3xl"></div>
                   </div>
                   
                   {/* Content - matches ShowCard content structure */}
-                  <div className="flex-1 flex flex-col justify-between text-center lg:text-left" style={{ minHeight: '320px' }}>
-                    <div>
+                  <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[420px]">
+                    <div className="space-y-4 lg:space-y-6">
                       {/* Title and Year */}
-                      <div className="mb-2 sm:mb-3 lg:mb-4 lg:pr-24">
-                        <div className="h-8 sm:h-10 lg:h-12 bg-gray-200 rounded mb-1"></div>
+                      <div className="lg:pr-20">
+                        <div className="h-8 sm:h-10 lg:h-12 skeleton rounded mb-2"></div>
                       </div>
 
                       {/* Genres and Series Info */}
-                      <div className="mb-3 sm:mb-4 lg:mb-6">
-                        <div className="h-4 sm:h-5 lg:h-6 bg-gray-200 rounded w-3/4"></div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2">
+                        <div className="h-6 skeleton rounded w-3/4"></div>
                       </div>
 
                       {/* Description */}
-                      <div className="mb-3 sm:mb-4 lg:mb-6">
-                        <div className="space-y-2">
-                          <div className="h-4 bg-gray-200 rounded"></div>
-                          <div className="h-4 bg-gray-200 rounded"></div>
-                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        </div>
+                      <div className="space-y-2">
+                        <div className="h-4 skeleton rounded"></div>
+                        <div className="h-4 skeleton rounded"></div>
+                        <div className="h-4 skeleton rounded w-3/4"></div>
                       </div>
 
                       {/* Creators and Cast */}
-                      <div className="mb-3 sm:mb-4 lg:mb-6">
-                        <div className="space-y-2">
-                          <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                          <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                        </div>
+                      <div className="space-y-2">
+                        <div className="h-4 skeleton rounded w-2/3"></div>
+                        <div className="h-4 skeleton rounded w-3/4"></div>
                       </div>
 
                       {/* Streaming Providers and IMDB */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-0 mb-4 sm:mb-6 lg:mb-8">
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2 lg:gap-3 justify-center lg:justify-start">
-                          <div className="h-8 w-20 bg-gray-200 rounded-[15px]"></div>
-                          <div className="h-8 w-24 bg-gray-200 rounded-[15px]"></div>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+                          <div className="h-8 w-20 skeleton rounded-xl"></div>
+                          <div className="h-8 w-24 skeleton rounded-xl"></div>
                         </div>
-                        <div className="h-8 w-16 bg-gray-200 rounded-[15px]"></div>
+                        <div className="h-10 w-16 skeleton rounded-xl"></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons - matches ShowCard button area */}
-                <div className="border-t border-[#8e8e8e] mt-4 sm:mt-6 mb-3 sm:mb-4 lg:mb-6"></div>
-                <div className="flex flex-col items-center lg:flex-row lg:justify-between gap-3 sm:gap-4">
-                  <div className="h-12 w-60 bg-gray-200 rounded-[15px]"></div>
-                  <div className="flex gap-2 sm:gap-3 lg:gap-4">
-                    <div className="h-12 w-24 bg-gray-200 rounded-[15px]"></div>
-                    <div className="h-12 w-24 bg-gray-200 rounded-[15px]"></div>
-                    <div className="h-12 w-24 bg-gray-200 rounded-[15px]"></div>
+                <div className="border-t border-white/20 mt-6 lg:mt-8 mb-6"></div>
+                <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
+                  <div className="flex-1 max-w-xs mx-auto lg:mx-0">
+                    <div className="h-12 skeleton rounded-xl"></div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 justify-center lg:justify-end">
+                    <div className="h-10 w-24 skeleton rounded-xl"></div>
+                    <div className="h-10 w-24 skeleton rounded-xl"></div>
+                    <div className="h-10 w-24 skeleton rounded-xl"></div>
                   </div>
                 </div>
               </div>

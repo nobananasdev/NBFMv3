@@ -29,16 +29,10 @@ export default function SortSelector({ value, onChange, options, className = '',
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
-            className={`px-3 py-2 sm:px-6 sm:py-3 rounded-2xl sm:rounded-3xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 ${
-              isActive
-                ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
-                : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-md'
-            }`}
+            className={`nav-pill ${isActive ? 'active' : ''}`}
           >
             <span
-              className={`font-semibold text-sm sm:text-[14px] ${
-                isActive ? 'text-white' : 'text-black'
-              }`}
+              className="font-semibold text-sm sm:text-[14px]"
             >
               {option.label}
             </span>
@@ -49,14 +43,10 @@ export default function SortSelector({ value, onChange, options, className = '',
       {showFilter && (
         <button
           onClick={toggleFilter}
-          className={`px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 relative ${
-            hasActiveFilters
-              ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
-              : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-md'
-          }`}
+          className={`nav-pill relative ${hasActiveFilters ? 'active' : ''}`}
         >
           <svg
-            className={`w-4 h-4 sm:w-5 sm:h-5 ${hasActiveFilters ? 'text-white' : 'text-black'}`}
+            className="w-4 h-4 sm:w-5 sm:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

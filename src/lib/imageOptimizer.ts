@@ -69,10 +69,33 @@ function generateOptimizedUrls(originalUrl: string): ImageFormats {
 
   // If it's a TMDB URL, we can optimize it
   if (originalUrl.includes('image.tmdb.org')) {
-    const baseUrl = originalUrl.replace(/\/w\d+\//, '/w300/')
-    formats.webp = `${baseUrl}?format=webp&quality=80`
-    formats.avif = `${baseUrl}?format=avif&quality=75`
-    formats.original = baseUrl
+    // Upgrade TMDB poster size to at least w780 to avoid blur on high-DPR screens.
+    // Handle both '/t/p/w500' and '/t/p/original' variants and strip any query params.
+    const upgradedUrl = originalUrl
+      .replace(/\/(w\d+|original)\//, '/w780/')
+      .split('?')[0]
+
+    // Let Next.js Image optimizer handle AVIF/WebP and quality downstream.
+    // Keep a single upgraded source URL for all "formats" to prevent accidental downscale.
+    formats.webp = upgradedUrl
+    formats.avif = upgradedUrl
+    formats.original = upgradedUrl
+  }
+
+  // Supabase Storage images: use on-the-fly resize via render endpoint to avoid upscaling blur
+  if (originalUrl.includes('.supabase.co') && originalUrl.includes('/storage/v1/')) {
+    // Switch object -> render endpoint and enforce a minimum width suitable for 280px @ 3x DPR
+    let renderUrl = originalUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+    // Remove any existing width param to avoid duplicates
+    renderUrl = renderUrl.replace(/([?&])width=\d+/g, '')
+    // Append width parameter
+    const sep = renderUrl.includes('?') ? '&' : '?'
+    renderUrl = `${renderUrl}${sep}width=840`
+
+    // Again, let Next handle final format/quality
+    formats.webp = renderUrl
+    formats.avif = renderUrl
+    formats.original = renderUrl
   }
 
   formatCache.set(originalUrl, formats)

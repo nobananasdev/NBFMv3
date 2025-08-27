@@ -88,7 +88,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
       } finally {
         if (mountedRef.current) setLoading(false)
       }
-    }, 300)
+    }, 150)
 
     return () => clearTimeout(h)
   }, [input, isOpen, user?.id])
@@ -152,13 +152,13 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
 
   if (inline) {
     return (
-      <div className="w-full bg-[#FFFCF5] rounded-[12px] sm:rounded-[15px] border border-[#8e8e8e] p-3 sm:p-4 lg:p-6 mb-6">
+      <div className="w-full glass-card p-3 sm:p-4 lg:p-6 mb-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-[#000000]">Search shows</h3>
+          <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-white">Search shows</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="icon-btn"
             aria-label="Close search"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,12 +187,12 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                   }
                 }}
                 placeholder="Type 3+ characters to search (name, cast, creator)..."
-                className="w-full border border-[#8e8e8e] rounded-[15px] sm:rounded-[20px] px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="search-input"
               />
             </div>
             <button
               onClick={handleCommit}
-              className="px-4 py-3 rounded-2xl sm:rounded-3xl bg-[#3a3a3a] hover:bg-[#2a2a2a] text-white font-semibold transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0"
+              className="action-btn gradient"
               aria-label="Search"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
             )}
 
             {suggestions.length > 0 && (
-              <ul className="divide-y divide-gray-200 rounded-[15px] sm:rounded-[20px] border border-[#8e8e8e] overflow-hidden bg-white">
+              <ul className="divide-y divide-transparent rounded-[15px] sm:rounded-[20px] border border-[var(--border-primary)] overflow-hidden glass">
                 {suggestions.map((sug) => {
                   const primary = sug.name || sug.original_name || 'Untitled'
                   const searchTerm = input.trim()
@@ -235,17 +235,17 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                           onCommit(primary, sug.imdb_id)
                           onClose()
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 focus:bg-gray-50 transition-colors"
+                        className="w-full text-left px-4 py-3 hover:bg-[var(--bg-glass-hover)] focus:bg-[var(--bg-glass-hover)] transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900">
-                              {highlightText(primary, searchTerm, 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                            <div className="font-medium text-white">
+                              {highlightText(primary, searchTerm, 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                             </div>
-                            <div className="text-xs text-gray-600 mt-0.5">
+                            <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">
                               {sug.creators && sug.creators.length > 0 && (
                                 <span>
-                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                                 </span>
                               )}
                               {sug.creators && sug.creators.length > 0 && sug.main_cast && sug.main_cast.length > 0 && (
@@ -253,7 +253,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                               )}
                               {sug.main_cast && sug.main_cast.length > 0 && (
                                 <span>
-                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                                 </span>
                               )}
                             </div>
@@ -282,13 +282,13 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative mt-24 w-full max-w-xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="modal-panel relative mt-24 w-full max-w-xl mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Search shows</h3>
+        <div className="px-5 py-4 border-b border-[var(--border-secondary)] flex items-center justify-between">
+          <h3 className="text-base sm:text-lg font-semibold text-white">Search shows</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="icon-btn"
             aria-label="Close search"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,12 +317,12 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                   }
                 }}
                 placeholder="Type 3+ characters to search (name, cast, creator)..."
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                className="search-input"
               />
             </div>
             <button
               onClick={handleCommit}
-              className="px-4 py-3 rounded-2xl sm:rounded-3xl bg-[#3a3a3a] hover:bg-[#2a2a2a] text-white font-semibold transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0"
+              className="action-btn gradient"
               aria-label="Search"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,7 +353,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
             )}
 
             {suggestions.length > 0 && (
-              <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 overflow-hidden">
+              <ul className="divide-y divide-transparent rounded-xl border border-[var(--border-primary)] overflow-hidden glass">
                 {suggestions.map((sug) => {
                   const primary = sug.name || sug.original_name || 'Untitled'
                   const searchTerm = input.trim()
@@ -365,17 +365,17 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                           onCommit(primary, sug.imdb_id)
                           onClose()
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 focus:bg-gray-50 transition-colors"
+                        className="w-full text-left px-4 py-3 hover:bg-[var(--bg-glass-hover)] focus:bg-[var(--bg-glass-hover)] transition-colors"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900">
-                              {highlightText(primary, searchTerm, 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                            <div className="font-medium text-white">
+                              {highlightText(primary, searchTerm, 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                             </div>
-                            <div className="text-xs text-gray-600 mt-0.5">
+                            <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">
                               {sug.creators && sug.creators.length > 0 && (
                                 <span>
-                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                                 </span>
                               )}
                               {sug.creators && sug.creators.length > 0 && sug.main_cast && sug.main_cast.length > 0 && (
@@ -383,7 +383,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                               )}
                               {sug.main_cast && sug.main_cast.length > 0 && (
                                 <span>
-                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-200 px-1 py-0.5 rounded font-semibold')}
+                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                                 </span>
                               )}
                             </div>

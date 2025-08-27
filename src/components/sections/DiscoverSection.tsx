@@ -321,15 +321,11 @@ function DiscoverContent() {
             {/* Search pill (same style as Sort pills) */}
             <button
               onClick={() => setIsSearchPanelOpen(true)}
-              className={`px-3 py-2 sm:px-4 sm:py-3 rounded-2xl sm:rounded-3xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 ${
-                isSearchActive
-                  ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
-                  : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-md'
-              }`}
+              className={`nav-pill ${isSearchActive ? 'active' : ''}`}
               aria-label="Open search"
             >
               <svg
-                className={`w-4 h-4 sm:w-5 sm:h-5 ${isSearchActive ? 'text-white' : 'text-black'}`}
+                className="w-4 h-4 sm:w-5 sm:h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -358,12 +354,12 @@ function DiscoverContent() {
         {/* Active search chip */}
         {isSearchActive && (
           <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm text-gray-600">
-              Searching for: <span className="font-semibold text-gray-900">{searchQuery}</span>
+            <span className="text-xs sm:text-sm text-[var(--text-secondary)]">
+              Searching for: <span className="font-semibold text-[var(--text-primary)]">{searchQuery}</span>
             </span>
             <button
               onClick={clearSearch}
-              className="text-xs sm:text-sm px-3 py-1 rounded-full border border-gray-300 hover:bg-gray-50"
+              className="action-btn text-xs sm:text-sm"
             >
               Clear search
             </button>

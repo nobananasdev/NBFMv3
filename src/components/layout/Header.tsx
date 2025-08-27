@@ -42,67 +42,128 @@ export function Header() {
 
   return (
     <>
-      <header className="mt-3 sm:mt-5">
-        <div className="container mx-auto px-3 sm:px-4 max-w-5xl">
-          <div className="h-14 sm:h-16 lg:h-20 rounded-[15px] sm:rounded-[20px]">
-            <div className="flex items-center justify-between h-full px-3 sm:px-4">
-              <div className="flex items-center flex-shrink-0">
+      <header className="relative z-50 header-glass animate-fade-in">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+          <div className="flex items-center justify-between h-20 lg:h-24">
+            {/* Logo Section */}
+            <div className="flex items-center flex-shrink-0">
+              <div className="relative">
                 <Image
                   src="/Nobananasformelogo.svg"
                   alt="No Bananas For Me"
                   width={400}
                   height={200}
-                  className="h-[60px] sm:h-12 lg:h-16 w-auto"
+                  className="h-12 sm:h-14 lg:h-16 w-auto logo-image animate-float"
                   priority
                   quality={100}
                   unoptimized
                 />
+                {/* Glow effect behind logo */}
+                <div className="absolute inset-0 -z-10 blur-xl opacity-30 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
               </div>
-              
-              {user ? (
-                <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                  <span className="text-xs sm:text-sm text-gray-700 hidden md:block">
-                    Welcome, {getUserDisplayName()}
+            </div>
+            
+            {/* User Actions */}
+            {user ? (
+              <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+                {/* Welcome Message */}
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-sm font-medium text-white/90">
+                    Welcome back
                   </span>
-                  <button
-                    onClick={handleReset}
-                    disabled={isResetting}
-                    className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  >
-                    <span className="font-semibold text-[10px] sm:text-sm text-black">
+                  <span className="text-xs text-white/60">
+                    {getUserDisplayName()}
+                  </span>
+                </div>
+                
+                {/* Reset Data Button */}
+                <button
+                  onClick={handleReset}
+                  disabled={isResetting}
+                  className="btn-secondary text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg 
+                      className="w-4 h-4 transition-transform group-hover:rotate-180" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="hidden sm:inline">
                       {isResetting ? 'Resetting...' : 'Reset Data'}
                     </span>
-                  </button>
-                  <button
-                    onClick={handleSignOut}
-                    className="px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0 bg-[#FFFCF5] hover:bg-gray-50 border border-[#696969] shadow-sm hover:shadow-lg"
-                  >
-                    <span className="font-semibold text-[10px] sm:text-sm text-black">
-                      Sign Out
-                    </span>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={openSignIn}
-                    className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] sm:text-xs px-3 py-2 sm:px-4 sm:py-2 rounded"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={openSignUp}
-                    className="btn bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs px-3 py-2 sm:px-4 sm:py-2 rounded"
-                  >
-                    Sign Up
-                  </button>
-                </div>
-              )}
-            </div>
+                  </div>
+                </button>
+                
+                {/* Sign Out Button */}
+                <button
+                  onClick={handleSignOut}
+                  className="btn-modern text-sm font-semibold group"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg 
+                      className="w-4 h-4 transition-transform group-hover:translate-x-1" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {/* Sign In Button */}
+                <button
+                  onClick={openSignIn}
+                  className="btn-secondary text-sm font-semibold group"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg 
+                      className="w-4 h-4 transition-transform group-hover:-translate-x-1" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Sign In</span>
+                  </div>
+                </button>
+                
+                {/* Sign Up Button */}
+                <button
+                  onClick={openSignUp}
+                  className="btn-modern text-sm font-semibold group relative overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 relative z-10">
+                    <svg 
+                      className="w-4 h-4 transition-transform group-hover:scale-110" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>Sign Up</span>
+                  </div>
+                  {/* Animated background */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
+        
+        {/* Subtle bottom border with gradient */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
       </header>
       
+      {/* Auth Modal */}
       {showAuth && <Auth onClose={() => setShowAuth(false)} initialMode={authMode} />}
     </>
   )

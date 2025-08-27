@@ -41,12 +41,12 @@ export function SignUpForm({ onToggleForm }: SignUpFormProps) {
   }
 
   return (
-    <div className="card p-8 max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
+    <div className="glass-card p-8 max-w-md mx-auto">
+      <h2 className="text-3xl font-bold text-center mb-6 gradient-text">Sign Up</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-white/80 mb-1">
             Email
           </label>
           <input
@@ -55,13 +55,13 @@ export function SignUpForm({ onToggleForm }: SignUpFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="search-input"
             placeholder="Enter your email"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-sm font-medium text-white/80 mb-1">
             Password
           </label>
           <input
@@ -70,19 +70,19 @@ export function SignUpForm({ onToggleForm }: SignUpFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="search-input"
             placeholder="Enter your password"
           />
         </div>
 
         {error && (
-          <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-md border border-red-200">
+          <div className="text-red-400 text-sm text-center">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="text-green-600 text-sm text-center bg-green-50 p-3 rounded-md border border-green-200">
+          <div className="text-green-400 text-sm text-center">
             {success}
           </div>
         )}
@@ -90,18 +90,18 @@ export function SignUpForm({ onToggleForm }: SignUpFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full btn-modern disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Creating account...' : 'Sign Up'}
         </button>
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-white/60">
           Already have an account?{' '}
           <button
             onClick={onToggleForm}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-indigo-400 hover:text-indigo-300 font-semibold"
           >
             Sign in
           </button>

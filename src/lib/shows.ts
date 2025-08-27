@@ -1232,45 +1232,35 @@ export async function searchShowsDatabase(params: {
       }
     }
 
-    // Use batch fetching to search through entire database
-    const batchSize = 1500
-    const maxBatches = 4 // Search through ~6000 shows total
+    // Use a more efficient approach: fetch fewer shows but prioritize high-quality content
+    const searchLimit = Math.min(1000, 1000) // Reduced from 6000 to 1000 for better performance
     const searchTerm = q.toLowerCase()
     
-    console.log(`🔍 [searchShowsDatabase] Fetching ${maxBatches} batches of ${batchSize} shows each`)
+    console.log(`🔍 [searchShowsDatabase] Fetching ${searchLimit} high-rated shows for comprehensive search`)
     
-    // Create parallel requests for comprehensive search
-    const batchPromises = []
-    for (let i = 0; i < maxBatches; i++) {
-      const offset = i * batchSize
-      
-      // Build query filters
-      let queryParams = []
-      
-      // Year range filter
-      if (params.yearRange && !(params.yearRange[0] === 1950 && params.yearRange[1] === 2025)) {
-        const [minYear, maxYear] = params.yearRange
-        queryParams.push(`first_air_date=gte.${minYear}-01-01`)
-        queryParams.push(`first_air_date=lte.${maxYear}-12-31`)
-      }
-      
-      const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
-      
-      const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${batchSize}&offset=${offset}${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
-      
-      batchPromises.push(
-        fetch(url, { method: 'GET', headers })
-          .then(response => response.ok ? response.json() : [])
-          .catch(error => {
-            console.error(`❌ [searchShowsDatabase] Batch ${i} failed:`, error)
-            return []
-          })
-      )
+    // Build query filters
+    let queryParams = []
+    
+    // Year range filter
+    if (params.yearRange && !(params.yearRange[0] === 1950 && params.yearRange[1] === 2025)) {
+      const [minYear, maxYear] = params.yearRange
+      queryParams.push(`first_air_date=gte.${minYear}-01-01`)
+      queryParams.push(`first_air_date=lte.${maxYear}-12-31`)
     }
     
-    // Wait for all batches to complete
-    const batchResults = await Promise.all(batchPromises)
-    let allShows = batchResults.flat()
+    const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
+    
+    // Single optimized query prioritizing high-rated content
+    const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${searchLimit}&offset=0${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
+    
+    const response = await fetch(url, { method: 'GET', headers })
+    
+    if (!response.ok) {
+      console.error('❌ [searchShowsDatabase] Database query failed:', response.status)
+      return { shows: [], error: new Error(`Database query failed: ${response.status}`), hasMore: false, rawFetched: 0, nextOffset: params.offset || 0 }
+    }
+
+    let allShows = await response.json()
     
     console.log(`🔍 [searchShowsDatabase] Fetched ${allShows.length} shows total for search`)
     
@@ -1335,8 +1325,8 @@ export async function searchShowsDatabase(params: {
         const score = scoreShowAgainstQuery(show, q)
         return { show, score }
       })
-      .filter(item => item.score > 0)
-      .sort((a, b) => {
+      .filter((item: { show: any; score: number }) => item.score > 0)
+      .sort((a: { show: any; score: number }, b: { show: any; score: number }) => {
         // Apply sorting based on sortBy parameter
         if (params.sortBy) {
           const sortedShows = applySortingToShows([a.show, b.show], params.sortBy)
@@ -1346,7 +1336,7 @@ export async function searchShowsDatabase(params: {
         // Default: sort by relevance score
         return b.score - a.score
       })
-      .map(item => item.show)
+      .map((item: { show: any; score: number }) => item.show)
     
     console.log(`🔍 [searchShowsDatabase] Found ${searchResults.length} matching shows`)
     
@@ -1406,7 +1396,7 @@ export async function searchShowsDatabase(params: {
 }
 
 /**
- * Quick search suggestions using entire database with 3-character minimum
+ * Quick search suggestions using optimized database query with 3-character minimum
  */
 export async function quickSearchDatabase(params: {
   prefix: string
@@ -1424,23 +1414,146 @@ export async function quickSearchDatabase(params: {
 
     console.log('🔍 [quickSearchDatabase] Quick search for:', q)
     
-    // Use the main search function but limit to fewer results for speed
-    const result = await searchShowsDatabase({
-      query: q,
-      limit: params.limit || 10,
-      offset: 0,
-      genreIds: params.genreIds,
-      yearRange: params.yearRange,
-      streamerIds: params.streamerIds,
-      excludeUserShows: false // Don't exclude for suggestions
-    })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     
-    if (result.error) {
-      return { suggestions: [], error: result.error }
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    }
+
+    // Get user's show IDs if we need to exclude them
+    let userShowIds: string[] = []
+    if (params.userId) {
+      try {
+        const userShowsUrl = `${supabaseUrl}/rest/v1/user_shows?select=imdb_id&user_id=eq.${params.userId}`
+        const userShowsResponse = await fetch(userShowsUrl, { method: 'GET', headers })
+        if (userShowsResponse.ok) {
+          const userShows = await userShowsResponse.json()
+          userShowIds = userShows.map((us: any) => us.imdb_id)
+        }
+      } catch (error) {
+        console.warn('⚠️ [quickSearchDatabase] Failed to fetch user shows:', error)
+      }
+    }
+
+    // Use a smarter search strategy: try multiple approaches to find matches
+    const searchTerm = q.toLowerCase()
+    
+    console.log(`🔍 [quickSearchDatabase] Using smart search strategy for: "${q}"`)
+    
+    // Build query filters for year range
+    let queryParams = []
+    if (params.yearRange && !(params.yearRange[0] === 1950 && params.yearRange[1] === 2025)) {
+      const [minYear, maxYear] = params.yearRange
+      queryParams.push(`first_air_date=gte.${minYear}-01-01`)
+      queryParams.push(`first_air_date=lte.${maxYear}-12-31`)
     }
     
+    const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
+    
+    // Strategy 1: Try direct database search using ilike for exact matches first
+    console.log(`🔍 [quickSearchDatabase] Strategy 1: Direct database search for "${q}"`)
+    const directSearchUrl = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&or=(name.ilike.*${encodeURIComponent(q)}*,original_name.ilike.*${encodeURIComponent(q)}*)&limit=50${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
+    
+    let directMatches = []
+    try {
+      const directResponse = await fetch(directSearchUrl, { method: 'GET', headers })
+      if (directResponse.ok) {
+        directMatches = await directResponse.json()
+        console.log(`🔍 [quickSearchDatabase] Strategy 1 found ${directMatches.length} direct matches`)
+      }
+    } catch (error) {
+      console.warn('⚠️ [quickSearchDatabase] Strategy 1 failed:', error)
+    }
+    
+    // Strategy 2: If we have enough direct matches, use them; otherwise fetch more shows for client-side search
+    let allShows = directMatches
+    
+    if (directMatches.length < 5) {
+      console.log(`🔍 [quickSearchDatabase] Strategy 2: Fetching more shows for client-side search`)
+      const fallbackLimit = 1000 // Increased from 200 to 1000 for better coverage
+      const fallbackUrl = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,main_cast,creators&limit=${fallbackLimit}&offset=0${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
+      
+      const fallbackResponse = await fetch(fallbackUrl, { method: 'GET', headers })
+      
+      if (!fallbackResponse.ok) {
+        console.error('❌ [quickSearchDatabase] Fallback database query failed:', fallbackResponse.status)
+        return { suggestions: [], error: new Error(`Database query failed: ${fallbackResponse.status}`) }
+      }
+
+      const fallbackShows = await fallbackResponse.json()
+      console.log(`🔍 [quickSearchDatabase] Strategy 2 fetched ${fallbackShows.length} shows for client-side search`)
+      
+      // Combine direct matches with fallback shows, removing duplicates
+      const seenIds = new Set(directMatches.map((show: any) => show.imdb_id))
+      const uniqueFallbackShows = fallbackShows.filter((show: any) => !seenIds.has(show.imdb_id))
+      allShows = [...directMatches, ...uniqueFallbackShows]
+    }
+    
+    console.log(`🔍 [quickSearchDatabase] Total shows to search: ${allShows.length}`)
+    
+    // Apply genre filtering if specified
+    if (params.genreIds && params.genreIds.length > 0) {
+      const beforeCount = allShows.length
+      allShows = allShows.filter((show: any) => {
+        const showGenres = show.genre_ids || []
+        return params.genreIds!.some(genreId => showGenres.includes(genreId))
+      })
+      console.log(`🔍 [quickSearchDatabase] After genre filter: ${beforeCount} -> ${allShows.length}`)
+    }
+    
+    // Apply streaming provider filtering if specified
+    if (params.streamerIds && params.streamerIds.length > 0) {
+      const beforeCount = allShows.length
+      allShows = allShows.filter((show: any) => {
+        if (!show.streaming_info?.US) return false
+        
+        let showProviders: number[] = []
+        
+        if (Array.isArray(show.streaming_info.US)) {
+          showProviders = show.streaming_info.US.map((p: any) => p.provider_id).filter(Boolean)
+        } else if (typeof show.streaming_info.US === 'object') {
+          const usInfo = show.streaming_info.US
+          const allProviders: any[] = []
+          
+          if (usInfo.flatrate && Array.isArray(usInfo.flatrate)) {
+            allProviders.push(...usInfo.flatrate)
+          }
+          if (usInfo.ads && Array.isArray(usInfo.ads)) {
+            allProviders.push(...usInfo.ads)
+          }
+          if (usInfo.rent && Array.isArray(usInfo.rent)) {
+            allProviders.push(...usInfo.rent)
+          }
+          if (usInfo.buy && Array.isArray(usInfo.buy)) {
+            allProviders.push(...usInfo.buy)
+          }
+          
+          showProviders = allProviders.map((p: any) => p.provider_id).filter(Boolean)
+        }
+        
+        return params.streamerIds!.some(streamerId => showProviders.includes(streamerId))
+      })
+      console.log(`🔍 [quickSearchDatabase] After streaming filter: ${beforeCount} -> ${allShows.length}`)
+    }
+    
+    // Client-side search with scoring
+    const searchResults = allShows
+      .map((show: any) => {
+        const score = scoreShowAgainstQuery(show, q)
+        return { show, score }
+      })
+      .filter((item: { show: any; score: number }) => item.score > 0)
+      .sort((a: { show: any; score: number }, b: { show: any; score: number }) => b.score - a.score) // Sort by relevance score
+      .slice(0, params.limit || 10) // Take top results
+      .map((item: { show: any; score: number }) => item.show)
+    
+    console.log(`🔍 [quickSearchDatabase] Found ${searchResults.length} matching shows`)
+    
     // Convert to suggestion format
-    let suggestions = result.shows.map(show => ({
+    let suggestions = searchResults.map((show: any) => ({
       imdb_id: show.imdb_id,
       name: show.name,
       original_name: show.original_name,
@@ -1448,21 +1561,20 @@ export async function quickSearchDatabase(params: {
       main_cast: show.main_cast || []
     }))
     
-    // If user is provided, fetch their show statuses
+    // If user is provided, add their show statuses
     if (params.userId && suggestions.length > 0) {
-      const imdbIds = suggestions.map(s => s.imdb_id)
+      const imdbIds = suggestions.map((s: any) => s.imdb_id)
       const { statuses, error: statusError } = await getUserShowStatuses(params.userId, imdbIds)
       
       if (!statusError) {
-        // Add user status to each suggestion
-        suggestions = suggestions.map(suggestion => ({
+        suggestions = suggestions.map((suggestion: any) => ({
           ...suggestion,
           user_status: statuses[suggestion.imdb_id]
         }))
       }
     }
     
-    console.log(`🔍 [quickSearchDatabase] Found ${suggestions.length} suggestions`)
+    console.log(`🔍 [quickSearchDatabase] Returning ${suggestions.length} suggestions`)
     
     return { suggestions, error: null }
   } catch (error) {

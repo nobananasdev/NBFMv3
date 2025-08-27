@@ -17,10 +17,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="relative min-h-screen flex items-center justify-center">
+        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(99,102,241,0.25),transparent),radial-gradient(1000px_500px_at_80%_10%,rgba(139,92,246,0.18),transparent)]"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent_30%),linear-gradient(0deg,rgba(255,255,255,0.03),transparent_30%)]"></div>
+        </div>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-white/70">Loading...</p>
         </div>
       </div>
     )
@@ -46,10 +50,17 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <FilterProvider>
-      <div className="min-h-screen bg-background">
+      <div className="relative min-h-screen">
+        {/* Background gradients */}
+        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(99,102,241,0.25),transparent),radial-gradient(1000px_500px_at_80%_10%,rgba(139,92,246,0.18),transparent)]"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent_30%),linear-gradient(0deg,rgba(255,255,255,0.03),transparent_30%)]"></div>
+        </div>
+
         <Header />
         <Navigation />
-        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-5xl">
+
+        <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-7xl animate-fade-in">
           {renderSection()}
         </main>
       </div>

@@ -8,14 +8,9 @@ interface NavigationItem {
   id: NavigationSection
   label: string
   count?: number
+  icon: string
+  gradient: string
 }
-
-// Arrow up right icon SVG
-const ArrowUpRightIcon = ({ isActive }: { isActive: boolean }) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M7 17L17 7M17 7H7M17 7V17" stroke={isActive ? "#000000" : "#ffffff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
 
 const CountBadge = ({ value, isActive }: { value?: number; isActive: boolean }) => {
   const [animate, setAnimate] = useState(false)
@@ -36,76 +31,148 @@ const CountBadge = ({ value, isActive }: { value?: number; isActive: boolean }) 
       : '0'
 
   return (
-    <span
-      aria-live="polite"
+    <div
+      className={`
+        relative px-2 py-1 rounded-xl text-xs font-bold transition-all duration-300
+        ${isActive 
+          ? 'bg-white/20 text-white' 
+          : 'bg-white/10 text-white/70'
+        }
+        ${animate ? 'animate-count-pop' : ''}
+      `}
       style={{ fontVariantNumeric: 'tabular-nums' }}
-      className={`count-badge-pop text-[10px] font-bold tracking-[1.1px] ${
-        isActive ? 'text-[#adadad]' : 'text-[#adadad]'
-      } ${animate ? 'is-animating animate-count-pop' : ''}`}
+      aria-live="polite"
     >
       {display}
-    </span>
+      {animate && (
+        <div className="absolute inset-0 rounded-xl bg-white/30 animate-ping"></div>
+      )}
+    </div>
   )
 }
 
 export default function Navigation() {
   const { activeSection, setActiveSection, watchlistCount, ratedCount, discoverCount, newSeasonsCount } = useNavigation()
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 100)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const navigationItems: NavigationItem[] = [
-    { id: 'discover', label: 'Discovery', count: discoverCount },
-    { id: 'new-seasons', label: 'New Seasons', count: newSeasonsCount },
-    { id: 'watchlist', label: 'Watchlist', count: watchlistCount },
-    { id: 'rated', label: 'Rated', count: ratedCount },
+    { 
+      id: 'discover', 
+      label: 'Discovery', 
+      count: discoverCount,
+      icon: '/discovery.svg',
+      gradient: 'from-blue-500 to-purple-600'
+    },
+    { 
+      id: 'new-seasons', 
+      label: 'New Seasons', 
+      count: newSeasonsCount,
+      icon: '/new seasons.svg',
+      gradient: 'from-green-500 to-teal-600'
+    },
+    { 
+      id: 'watchlist', 
+      label: 'Watchlist', 
+      count: watchlistCount,
+      icon: '/watchlist.svg',
+      gradient: 'from-yellow-500 to-orange-600'
+    },
+    { 
+      id: 'rated', 
+      label: 'Rated', 
+      count: ratedCount,
+      icon: '/rated.svg',
+      gradient: 'from-pink-500 to-red-600'
+    },
   ]
 
-
-
-  const renderButton = (item: NavigationItem) => {
+  const renderDesktopButton = (item: NavigationItem) => {
     const isActive = activeSection === item.id
     
     return (
       <button
         key={item.id}
         onClick={() => setActiveSection(item.id)}
-        className={`relative flex-1 p-4 rounded-[15px] transition-all duration-200 transform hover:-translate-y-1 hover:shadow-xl active:translate-y-0
-          /* Desktop styles - more compact */
-          hidden sm:block sm:h-[70px] ${
-          isActive
-            ? 'bg-[#3a3a3a] hover:bg-[#3a3a3a] border-0 shadow-md'
-            : 'bg-[#FFFCF5] hover:bg-gray-50 border border-[#8e8e8e] shadow-sm hover:shadow-md'
-        }`}
+        className={`
+          group relative overflow-hidden rounded-3xl p-6 transition-all duration-300 transform
+          ${isActive
+            ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-105`
+            : `${isScrolled ? 'bg-gray-900/90 backdrop-blur-md border border-white/20' : 'bg-white/10 border border-white/20'} hover:bg-white/15 hover:scale-105`
+          }
+        `}
       >
-        {/* Compact layout with icon, label and count */}
-        <div className="flex items-center justify-between h-full">
-          {/* Left side: icon and label */}
-          <div className="flex items-center space-x-3">
-            <div className={`flex-shrink-0 w-6 h-6 ${isActive ? 'brightness-0 invert' : ''}`}>
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16"></div>
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 flex items-center justify-between">
+          {/* Left side: Icon and Label */}
+          <div className="flex items-center space-x-4">
+            <div className={`
+              relative p-3 rounded-2xl transition-all duration-300
+              ${isActive 
+                ? 'bg-white/20 shadow-lg' 
+                : 'bg-white/10 group-hover:bg-white/15'
+              }
+            `}>
               <Image
-                src={(() => {
-                  switch (item.id) {
-                    case 'discover': return "/discovery.svg"
-                    case 'new-seasons': return "/new seasons.svg"
-                    case 'watchlist': return "/watchlist.svg"
-                    case 'rated': return "/rated.svg"
-                    default: return ""
-                  }
-                })()}
+                src={item.icon}
                 alt={item.label}
                 width={24}
                 height={24}
-                className="w-6 h-6"
+                className={`w-6 h-6 transition-all duration-300 ${
+                  isActive ? 'brightness-0 invert' : 'brightness-0 invert opacity-70 group-hover:opacity-100'
+                }`}
               />
+              {/* Icon glow effect */}
+              {isActive && (
+                <div className="absolute inset-0 rounded-2xl bg-white/30 blur-md animate-pulse"></div>
+              )}
             </div>
-            <h3 className={`text-[14px] font-bold tracking-[1.54px] ${
-              isActive ? 'text-white' : 'text-[#292929]'
-            }`}>
-              {item.label}
-            </h3>
+            
+            <div>
+              <h3 className={`
+                text-lg font-bold tracking-wide transition-all duration-300
+                ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'}
+              `}>
+                {item.label}
+              </h3>
+              <div className={`
+                text-sm transition-all duration-300
+                ${isActive ? 'text-white/80' : 'text-white/50 group-hover:text-white/70'}
+              `}>
+                {item.count || 0} items
+              </div>
+            </div>
           </div>
           
-          {/* Right side: count */}
+          {/* Right side: Count Badge */}
           <CountBadge value={item.count} isActive={isActive} />
         </div>
+        
+        {/* Hover effect overlay */}
+        <div className={`
+          absolute inset-0 rounded-3xl transition-opacity duration-300
+          bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-20
+          ${isActive ? 'opacity-0' : ''}
+        `}></div>
+        
+        {/* Active indicator */}
+        {isActive && (
+          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-white/20 to-transparent animate-pulse"></div>
+        )}
       </button>
     )
   }
@@ -117,60 +184,70 @@ export default function Navigation() {
       <button
         key={`mobile-${item.id}`}
         onClick={() => setActiveSection(item.id)}
-        className={`flex-1 py-2 px-1 rounded-[10px] transition-all duration-200 sm:hidden ${
-          isActive
-            ? 'bg-[#3a3a3a] shadow-md'
-            : 'bg-[#FFFCF5] border border-[#8e8e8e] shadow-sm'
-        }`}
+        className={`
+          relative flex-1 p-3 rounded-2xl transition-all duration-300 transform
+          ${isActive
+            ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-105`
+            : `${isScrolled ? 'bg-gray-900/90 backdrop-blur-md border border-white/20' : 'glass'} hover:scale-105`
+          }
+        `}
       >
-        {/* Mobile layout matching Figma design: compact vertical arrangement */}
-        <div className="flex flex-col items-center justify-between h-full space-y-1">
-          {/* Icon at top */}
-          <div className={`flex-shrink-0 w-4 h-4 ${isActive ? 'brightness-0 invert' : ''}`}>
+        {/* Content */}
+        <div className="flex flex-col items-center space-y-2">
+          {/* Icon */}
+          <div className={`
+            relative p-2 rounded-xl transition-all duration-300
+            ${isActive ? 'bg-white/20' : 'bg-white/10'}
+          `}>
             <Image
-              src={(() => {
-                switch (item.id) {
-                  case 'discover': return "/discovery.svg"
-                  case 'new-seasons': return "/new seasons.svg"
-                  case 'watchlist': return "/watchlist.svg"
-                  case 'rated': return "/rated.svg"
-                  default: return ""
-                }
-              })()}
+              src={item.icon}
               alt={item.label}
-              width={16}
-              height={16}
-              className="w-4 h-4"
+              width={20}
+              height={20}
+              className={`w-5 h-5 transition-all duration-300 ${
+                isActive ? 'brightness-0 invert' : 'brightness-0 invert opacity-70'
+              }`}
             />
           </div>
           
-          {/* Label in middle */}
-          <h3 className={`mobile-nav-title sm:text-[10px] font-bold text-center leading-tight tracking-[0.6px] ${
-            isActive ? 'text-white' : 'text-[#292929]'
-          } px-0.5`}>
-            {item.label}
-          </h3>
+          {/* Label */}
+          <div className="text-center">
+            <h3 className={`
+              text-xs font-bold tracking-wide transition-all duration-300
+              ${isActive ? 'text-white' : 'text-white/80'}
+            `}>
+              {item.label}
+            </h3>
+          </div>
           
-          {/* Count at bottom */}
+          {/* Count */}
           <CountBadge value={item.count} isActive={isActive} />
         </div>
+        
+        {/* Active indicator */}
+        {isActive && (
+          <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-br from-white/30 to-transparent animate-pulse"></div>
+        )}
       </button>
     )
   }
 
   return (
-    <nav className="sticky top-0 z-50 mt-3 sm:mt-5 mb-6 sm:mb-8 bg-background">
-      <div className="container mx-auto px-3 sm:px-4 max-w-5xl">
-        {/* Mobile navigation - single row */}
-        <div className="flex gap-1 sm:hidden mb-4">
+    <nav className={`sticky top-0 z-40 mt-6 mb-8 animate-slide-up transition-all duration-300 ${isScrolled ? 'backdrop-blur-md' : ''}`}>
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+        {/* Mobile Navigation */}
+        <div className="flex gap-2 sm:hidden">
           {navigationItems.map((item) => renderMobileButton(item))}
         </div>
         
-        {/* Desktop navigation - grid layout */}
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {navigationItems.map((item) => renderButton(item))}
+        {/* Desktop Navigation */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {navigationItems.map((item) => renderDesktopButton(item))}
         </div>
       </div>
+      
+      {/* Decorative gradient line */}
+      <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"></div>
     </nav>
   )
 }
