@@ -103,7 +103,7 @@ export default function Navigation() {
         key={item.id}
         onClick={() => setActiveSection(item.id)}
         className={`
-          group relative overflow-hidden rounded-3xl p-6 transition-all duration-300 transform
+          group relative overflow-hidden rounded-3xl px-4 py-3 transition-all duration-300 transform
           ${isActive
             ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-105`
             : `${isScrolled ? 'bg-gray-900/90 backdrop-blur-md border border-white/20' : 'bg-white/10 border border-white/20'} hover:bg-white/15 hover:scale-105`
@@ -121,7 +121,7 @@ export default function Navigation() {
           {/* Left side: Icon and Label */}
           <div className="flex items-center space-x-4">
             <div className={`
-              relative p-3 rounded-2xl transition-all duration-300
+              relative p-2 rounded-2xl transition-all duration-300
               ${isActive 
                 ? 'bg-white/20 shadow-lg' 
                 : 'bg-white/10 group-hover:bg-white/15'
@@ -144,21 +144,15 @@ export default function Navigation() {
             
             <div>
               <h3 className={`
-                text-lg font-bold tracking-wide transition-all duration-300
+                text-base font-bold tracking-wide transition-all duration-300
                 ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'}
               `}>
                 {item.label}
               </h3>
-              <div className={`
-                text-sm transition-all duration-300
-                ${isActive ? 'text-white/80' : 'text-white/50 group-hover:text-white/70'}
-              `}>
-                {item.count || 0} items
-              </div>
             </div>
           </div>
           
-          {/* Right side: Count Badge */}
+          {/* Right side: Count Badge only */}
           <CountBadge value={item.count} isActive={isActive} />
         </div>
         
@@ -177,76 +171,15 @@ export default function Navigation() {
     )
   }
 
-  const renderMobileButton = (item: NavigationItem) => {
-    const isActive = activeSection === item.id
-    
-    return (
-      <button
-        key={`mobile-${item.id}`}
-        onClick={() => setActiveSection(item.id)}
-        className={`
-          relative flex-1 p-3 rounded-2xl transition-all duration-300 transform
-          ${isActive
-            ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-105`
-            : `${isScrolled ? 'bg-gray-900/90 backdrop-blur-md border border-white/20' : 'glass'} hover:scale-105`
-          }
-        `}
-      >
-        {/* Content */}
-        <div className="flex flex-col items-center space-y-2">
-          {/* Icon */}
-          <div className={`
-            relative p-2 rounded-xl transition-all duration-300
-            ${isActive ? 'bg-white/20' : 'bg-white/10'}
-          `}>
-            <Image
-              src={item.icon}
-              alt={item.label}
-              width={20}
-              height={20}
-              className={`w-5 h-5 transition-all duration-300 ${
-                isActive ? 'brightness-0 invert' : 'brightness-0 invert opacity-70'
-              }`}
-            />
-          </div>
-          
-          {/* Label */}
-          <div className="text-center">
-            <h3 className={`
-              text-xs font-bold tracking-wide transition-all duration-300
-              ${isActive ? 'text-white' : 'text-white/80'}
-            `}>
-              {item.label}
-            </h3>
-          </div>
-          
-          {/* Count */}
-          <CountBadge value={item.count} isActive={isActive} />
-        </div>
-        
-        {/* Active indicator */}
-        {isActive && (
-          <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-br from-white/30 to-transparent animate-pulse"></div>
-        )}
-      </button>
-    )
-  }
+  
 
   return (
-    <nav className={`sticky top-0 z-40 mt-6 mb-8 animate-slide-up transition-all duration-300 ${isScrolled ? 'backdrop-blur-md' : ''}`}>
-      <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-        {/* Mobile Navigation */}
-        <div className="flex gap-2 sm:hidden">
-          {navigationItems.map((item) => renderMobileButton(item))}
-        </div>
-        
-        {/* Desktop Navigation */}
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <nav className={`sticky top-0 z-40 mt-6 mb-8 animate-slide-up transition-all duration-300 ${isScrolled ? 'backdrop-blur-md' : ''} hidden sm:block`}>
+      <div className="container mx-auto px-4 sm:px-6 container-content">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {navigationItems.map((item) => renderDesktopButton(item))}
         </div>
       </div>
-      
-      {/* Decorative gradient line */}
       <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"></div>
     </nav>
   )

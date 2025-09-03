@@ -13,26 +13,32 @@ interface SortSelectorProps {
   }>
   className?: string
   showFilter?: boolean
+  mobileEqualWidth?: boolean
+  buttonClassName?: string
 }
 
-export default function SortSelector({ value, onChange, options, className = '', showFilter = false }: SortSelectorProps) {
+export default function SortSelector({ value, onChange, options, className = '', showFilter = false, mobileEqualWidth = true, buttonClassName = '' }: SortSelectorProps) {
   // Always call useContext hook, but only use it if showFilter is true
   const filterContext = useContext(FilterContext)
   const toggleFilter = showFilter ? (filterContext?.toggleFilter || (() => {})) : (() => {})
   const hasActiveFilters = showFilter ? (filterContext?.hasActiveFilters || false) : false
 
+  const mobileWidthClass = mobileEqualWidth ? 'flex-1' : 'flex-none'
+
+  const containerJustify = mobileEqualWidth ? 'justify-between' : 'justify-start'
+
   return (
-    <div className={`flex gap-2 sm:gap-4 ${className}`}>
+    <div className={`flex gap-2 sm:gap-4 w-full ${containerJustify} items-center flex-nowrap ${className}`}>
       {options.map((option) => {
         const isActive = value === option.value
         return (
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
-            className={`nav-pill ${isActive ? 'active' : ''}`}
+            className={`nav-pill ${isActive ? 'active' : ''} ${mobileWidthClass} text-center sm:flex-none ${buttonClassName}`}
           >
             <span
-              className="font-semibold text-sm sm:text-[14px]"
+              className="font-semibold text-xs sm:text-[14px] whitespace-nowrap"
             >
               {option.label}
             </span>
@@ -43,10 +49,10 @@ export default function SortSelector({ value, onChange, options, className = '',
       {showFilter && (
         <button
           onClick={toggleFilter}
-          className={`nav-pill relative ${hasActiveFilters ? 'active' : ''}`}
+          className={`nav-pill relative ${hasActiveFilters ? 'active' : ''} ${mobileWidthClass} text-center sm:flex-none ${buttonClassName}`}
         >
           <svg
-            className="w-4 h-4 sm:w-5 sm:h-5"
+            className="w-4 h-4 sm:w-5 sm:h-5 mx-auto"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

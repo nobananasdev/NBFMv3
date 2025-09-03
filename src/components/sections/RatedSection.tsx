@@ -93,17 +93,21 @@ export function RatedSection() {
         </div>
       ) : (
         <>
-          {/* Sort Selector */}
+          {/* Controls: on mobile show Sort first and count below; desktop keeps one row */}
           {shows.length > 0 && (
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+              <div className="order-1 sm:order-1 w-full sm:w-auto">
+                <SortSelector
+                  value={sortBy}
+                  onChange={setSortBy}
+                  options={RATED_SORT_OPTIONS}
+                  className="w-full sm:w-auto"
+                  buttonClassName="h-9"
+                />
+              </div>
+              <div className="order-2 sm:order-1 text-xs sm:text-sm text-gray-500">
                 {shows.length} rated show{shows.length === 1 ? '' : 's'}
               </div>
-              <SortSelector
-                value={sortBy}
-                onChange={setSortBy}
-                options={RATED_SORT_OPTIONS}
-              />
             </div>
           )}
 

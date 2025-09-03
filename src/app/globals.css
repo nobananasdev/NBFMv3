@@ -81,6 +81,14 @@
 
 /* Component Styles */
 @layer components {
+  /* Search suggestion item with very minimal hover */
+  .search-suggestion {
+    @apply w-full text-left px-3 py-2 transition-colors duration-150;
+  }
+  .search-suggestion:hover,
+  .search-suggestion:focus {
+    background: rgba(255, 255, 255, 0.06);
+  }
   /* Glass Card Effect */
   .glass-card {
     background: var(--gradient-glass);
@@ -97,6 +105,14 @@
     border-color: var(--border-accent);
     box-shadow: var(--shadow-xl), var(--shadow-glow);
     transform: translateY(-4px);
+  }
+
+  /* Minimal hover variant for cards (no lift, subtle border) */
+  .glass-card.minimal-hover:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-lg);
+    transform: none;
   }
   
   /* Modern Button */
@@ -147,10 +163,25 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
   }
+
+  /* Filter Sidebar Buttons: clearer default tone and stronger hover */
+  .filter-btn {
+    @apply rounded-2xl px-4 py-2.5 font-semibold transition-colors duration-200;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+  }
+  .filter-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: var(--border-accent);
+  }
   
   /* Navigation Pills */
   .nav-pill {
-    @apply relative rounded-2xl px-6 py-4 transition-all duration-300;
+    @apply relative rounded-2xl px-4 py-2 transition-all duration-200;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: var(--bg-glass);
     border: 1px solid var(--border-secondary);
     backdrop-filter: blur(10px);
@@ -159,18 +190,21 @@
   .nav-pill.active {
     background: var(--gradient-primary);
     border-color: transparent;
-    box-shadow: var(--shadow-glow);
+    box-shadow: none; /* reduce glow for minimal look */
   }
   
+  /* Subtle lift on hover for all pills */
+  .nav-pill:hover {
+    transform: translateY(-2px);
+  }
   .nav-pill:hover:not(.active) {
     background: var(--bg-glass-hover);
     border-color: var(--border-primary);
-    transform: translateY(-2px);
   }
   
   /* Show Card Modern */
   .show-card-modern {
-    @apply relative overflow-hidden rounded-3xl transition-all duration-500;
+    @apply relative overflow-hidden rounded-3xl transition-all duration-300;
     background: var(--gradient-card);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-primary);
@@ -178,8 +212,8 @@
   }
   
   .show-card-modern:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: var(--shadow-xl), var(--shadow-glow);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
     border-color: var(--border-accent);
   }
   
@@ -200,6 +234,17 @@
     border: 1px solid var(--border-primary);
     backdrop-filter: blur(10px);
     color: var(--text-secondary);
+  }
+
+  /* NEW badge – stronger yellow glass background + black text */
+  .new-badge {
+    @apply rounded-xl px-3 py-1.5 text-[10px] sm:text-xs font-semibold shadow-md;
+    /* More yellow, less transparent */
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.52) 0%, rgba(250, 204, 21, 0.36) 100%);
+    color: black;
+    border: 1px solid rgba(245, 158, 11, 0.75); /* stronger amber border */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   
   /* Action Button */
@@ -255,6 +300,12 @@
 
   .action-btn.gradient:hover::before {
     opacity: 1;
+  }
+
+  /* Minimal hover variant for subtle buttons (e.g., search) */
+  .action-btn.minimal-hover:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
   }
   
 /* Rating intensity variants (glass with clear worst -> best scale) */
@@ -386,9 +437,16 @@
 
 /* Animations */
 @layer utilities {
+  /* Shared content container width */
+  .container-content {
+    max-width: 1120px;
+  }
   /* Fade In Animation */
   .animate-fade-in {
     animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .animate-fade-out {
+    animation: fadeOut 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
   
   /* Slide Up Animation */
@@ -434,6 +492,16 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-6px);
     }
   }
   
@@ -633,8 +701,9 @@
   }
   
   .nav-pill {
-    border-radius: 16px;
-    padding: 12px 16px;
+    border-radius: 14px;
+    padding: 8px 12px;
+    min-height: 36px !important; /* override generic button min-height for compact pills */
   }
   
   /* Mobile font adjustments */

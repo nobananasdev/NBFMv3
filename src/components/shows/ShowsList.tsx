@@ -141,20 +141,20 @@ export default function ShowsList({
   if (loading && shows.length === 0) {
     return (
       <div className={`${className}`}>
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="show-card-modern p-6 lg:p-8 relative" style={{ minHeight: '500px' }}>
+            <div key={index} className="show-card-modern p-3 lg:p-5 relative" style={{ minHeight: '320px' }}>
               <div className="animate-pulse">
                 {/* Main Content - Responsive Layout - matches ShowCard exactly */}
-                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
                   {/* Poster - matches ShowCard image dimensions */}
                   <div className="flex-shrink-0 self-center lg:self-start">
-                    <div className="w-[200px] h-[300px] sm:w-[220px] sm:h-[330px] lg:w-[280px] lg:h-[420px] skeleton rounded-3xl"></div>
+                    <div className="w-[140px] h-[210px] sm:w-[160px] sm:h-[240px] lg:w-[200px] lg:h-[300px] skeleton rounded-3xl"></div>
                   </div>
                   
                   {/* Content - matches ShowCard content structure */}
-                  <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[420px]">
-                    <div className="space-y-4 lg:space-y-6">
+                  <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[260px]">
+                    <div className="space-y-2 lg:space-y-3">
                       {/* Title and Year */}
                       <div className="lg:pr-20">
                         <div className="h-8 sm:h-10 lg:h-12 skeleton rounded mb-2"></div>
@@ -179,27 +179,27 @@ export default function ShowsList({
                       </div>
 
                       {/* Streaming Providers and IMDB */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
                           <div className="h-8 w-20 skeleton rounded-xl"></div>
                           <div className="h-8 w-24 skeleton rounded-xl"></div>
                         </div>
-                        <div className="h-10 w-16 skeleton rounded-xl"></div>
+                        <div className="h-9 w-20 skeleton rounded-lg"></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons - matches ShowCard button area */}
-                <div className="border-t border-white/20 mt-6 lg:mt-8 mb-6"></div>
+                <div className="border-t border-white/20 mt-3 lg:mt-4 mb-4"></div>
                 <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
-                  <div className="flex-1 max-w-xs mx-auto lg:mx-0">
-                    <div className="h-12 skeleton rounded-xl"></div>
+                  <div className="mx-auto lg:mx-0">
+                    <div className="h-10 skeleton rounded-lg w-[200px]"></div>
                   </div>
-                  <div className="flex flex-wrap gap-3 justify-center lg:justify-end">
-                    <div className="h-10 w-24 skeleton rounded-xl"></div>
-                    <div className="h-10 w-24 skeleton rounded-xl"></div>
-                    <div className="h-10 w-24 skeleton rounded-xl"></div>
+                  <div className="flex flex-wrap gap-2 justify-center lg:justify-end">
+                    <div className="h-9 w-24 skeleton rounded-lg"></div>
+                    <div className="h-9 w-24 skeleton rounded-lg"></div>
+                    <div className="h-9 w-24 skeleton rounded-lg"></div>
                   </div>
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function ShowsList({
 
   return (
     <div className={`${className}`} ref={listRef}>
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         {shows.map((show, index) => (
           <div key={show.imdb_id} className="cv-auto show-card-item">
             <ShowCard

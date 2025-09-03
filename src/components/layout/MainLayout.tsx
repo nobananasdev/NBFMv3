@@ -5,6 +5,7 @@ import { useNavigation } from '@/contexts/NavigationContext'
 import { FilterProvider } from '@/contexts/FilterContext'
 import { Header } from './Header'
 import Navigation from './Navigation'
+import MobileNavigation from './MobileNavigation'
 import { Auth } from '../auth/Auth'
 import { DiscoverSection } from '../sections/DiscoverSection'
 import { WatchlistSection } from '../sections/WatchlistSection'
@@ -58,9 +59,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <Header />
+        {/* Mobile-only nav */}
+        <MobileNavigation />
+        {/* Desktop/Tablet nav */}
         <Navigation />
 
-        <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-7xl animate-fade-in">
+        <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 container-content animate-fade-in">
           {renderSection()}
         </main>
       </div>

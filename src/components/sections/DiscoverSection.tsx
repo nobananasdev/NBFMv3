@@ -111,7 +111,8 @@ function DiscoverContent() {
                   query: searchQuery,
                   limit: 20,
                   offset: searchOffset,
-                  excludeUserShows: !!user,
+                  // Do not exclude user's shows in full search to match quick search behavior
+                  excludeUserShows: false,
                   userId: user?.id,
                   sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
                 })
@@ -214,7 +215,8 @@ function DiscoverContent() {
           query: q,
           limit: 20,
           offset: 0,
-          excludeUserShows: !!user,
+          // Do not exclude user's shows in full search to match quick search behavior
+          excludeUserShows: false,
           userId: user?.id,
           sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
         })
@@ -268,7 +270,8 @@ function DiscoverContent() {
         query: searchQuery,
         limit: 20,
         offset: 0,
-        excludeUserShows: !!user,
+        // Do not exclude user's shows in full search to match quick search behavior
+        excludeUserShows: false,
         userId: user?.id,
         sortBy: newSort === 'rating' ? 'by_rating' : newSort
       })
@@ -302,26 +305,13 @@ function DiscoverContent() {
   return (
     <>
       <div className="relative space-y-6">
-        {/* Controls row: count + Search + Sort/Filter */}
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500">
-            {effectiveShows.length > 0 && !showInlineLoading &&
-              `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
-            {showInlineLoading && (
-              <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Loading filtered content...</span>
-              </span>
-            )}
-          </div>
-          <div className="flex gap-2 sm:gap-4">
+        {/* Controls: on mobile stack controls first, then count below; on larger screens keep in one row */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-nowrap sm:justify-between sm:items-center">
+          <div className="order-1 sm:order-1 flex gap-2 sm:gap-4 w-full items-center flex-nowrap">
             {/* Search pill (same style as Sort pills) */}
             <button
-              onClick={() => setIsSearchPanelOpen(true)}
-              className={`nav-pill ${isSearchActive ? 'active' : ''}`}
+              onClick={() => setIsSearchPanelOpen(prev => !prev)}
+              className={`nav-pill h-9 ${isSearchActive ? 'active' : ''}`}
               aria-label="Open search"
             >
               <svg
@@ -339,7 +329,25 @@ function DiscoverContent() {
               onChange={isSearchActive ? handleSearchSortChange : setSortBy}
               options={DISCOVER_SORT_OPTIONS}
               showFilter={true}
+              className="flex-1 sm:w-auto"
+              mobileEqualWidth={false}
+              buttonClassName="h-9"
             />
+          </div>
+
+          {/* Count indicator: placed below controls on mobile, inline on larger screens */}
+          <div className="order-2 sm:order-1 text-xs sm:text-sm text-gray-500 whitespace-nowrap sm:shrink-0">
+            {effectiveShows.length > 0 && !showInlineLoading &&
+              `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
+            {showInlineLoading && (
+              <span className="inline-flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Loading filtered content...</span>
+              </span>
+            )}
           </div>
         </div>
 

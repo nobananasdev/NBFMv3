@@ -115,7 +115,7 @@ export default function NewSeasonsList({
             >
               {/* Compact View */}
               <div className={`transition-all duration-500 ease-out ${isExpanded ? 'p-6 pb-4' : ''}`}>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center sm:gap-6 gap-4 flex-wrap">
                   {/* Small Poster with optimized loading */}
                   <div className={`flex-shrink-0 relative bg-gray-800 rounded-lg overflow-hidden transition-all duration-500 ease-out ${
                     isExpanded ? 'w-[60px] h-[90px]' : 'w-[40px] h-[60px]'
@@ -166,13 +166,13 @@ export default function NewSeasonsList({
                   </div>
 
                   {/* Expand/Collapse Icon and IMDb Link */}
-                  <div className="flex-shrink-0 flex items-center gap-3">
+                  <div className="flex-shrink-0 flex items-center gap-3 w-full sm:w-auto justify-end mt-3 sm:mt-0">
                     {/* IMDb Link */}
                     <a
                       href={`https://www.imdb.com/title/${show.imdb_id}/`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="glass border border-white/20 hover:bg-white/15 text-white px-4 py-2 rounded-xl text-sm font-semibold group inline-flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20"
+                      className="glass border border-white/20 hover:bg-white/15 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold group inline-flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span>IMDB</span>

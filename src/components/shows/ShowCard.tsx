@@ -11,6 +11,7 @@ import {
   formatSeriesInfo,
   getShowDescription,
   getPosterUrl,
+  isNewRelease,
   updateUserShowStatus
 } from '@/lib/shows'
 import { highlightText, highlightTextArray } from '@/lib/textHighlight'
@@ -89,6 +90,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const seriesInfo = formatSeriesInfo(show)
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
+  const isNew = isNewRelease(show.first_air_date)
   
   // Get optimized image URL and generate blur placeholder
   const optimizedUrl = posterUrl ? getOptimizedImageUrl(posterUrl) : null
@@ -113,10 +115,16 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
     setShouldLoadImage(true)
   }, [])
 
-  // Get only our_score rating
+  // Show a rating consistent with sorting fallback: our_score → imdb_rating → vote_average
   const getRating = () => {
     if (show.our_score && show.our_score > 0) {
       return { value: show.our_score.toFixed(1), source: 'Our' }
+    }
+    if ((show as any).imdb_rating && (show as any).imdb_rating > 0) {
+      return { value: (show as any).imdb_rating.toFixed(1), source: 'IMDb' }
+    }
+    if ((show as any).vote_average && (show as any).vote_average > 0) {
+      return { value: (show as any).vote_average.toFixed(1), source: 'TMDB' }
     }
     return null
   }
@@ -188,7 +196,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   if (actionResult) {
     return (
       <div className={`
-        show-card-modern p-8 flex items-center justify-center min-h-[500px]
+        show-card-modern p-4 flex items-center justify-center min-h-[320px]
         transition-all duration-500 ease-out
         ${showSuccessMessage && !shouldFadeOutSuccess
           ? 'opacity-100 scale-100 animate-success-bounce'
@@ -210,7 +218,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   }
 
   return (
-    <div className={`show-card-modern p-6 lg:p-8 relative group transition-all duration-500 ease-out min-h-[500px] ${shouldFadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+    <div className={`show-card-modern p-3 lg:p-5 relative group transition-all duration-500 ease-out min-h-[320px] ${shouldFadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
       {/* Rating Badge */}
       {rating && (
         <div className="rating-badge">
@@ -218,7 +226,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
-            <span className="font-bold text-white text-lg">
+            <span className="font-bold text-white text-sm sm:text-base">
               {rating.value}
             </span>
           </div>
@@ -226,13 +234,19 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
       )}
 
       {/* Main Content Layout */}
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+      <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
         {/* Poster Section */}
         <div className="flex-shrink-0 self-center lg:self-start">
           <div
             ref={imageRef}
-            className="relative w-[200px] h-[300px] sm:w-[220px] sm:h-[330px] lg:w-[280px] lg:h-[420px] rounded-3xl overflow-hidden group-hover:shadow-2xl transition-all duration-500"
+            className="relative w-[140px] h-[210px] sm:w-[160px] sm:h-[240px] lg:w-[200px] lg:h-[300px] rounded-3xl overflow-hidden group-hover:shadow-lg transition-all duration-300"
           >
+            {/* NEW badge (visible for 1 month after release) */}
+            {isNew && (
+              <div className="new-badge absolute top-2 left-2 z-10 tracking-wider">
+                NEW
+              </div>
+            )}
             {/* Enhanced blur placeholder */}
             <div className={`
               absolute inset-0 transition-opacity duration-500 rounded-3xl
@@ -273,7 +287,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                   crisp-image object-cover transition-all duration-500 rounded-3xl
                   ${imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}
                 `}
-                sizes="(max-width: 640px) 200px, (max-width: 1024px) 220px, 280px"
+                sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 200px"
                 quality={90}
                 priority={priority}
                 fetchPriority={priority ? 'high' : 'auto'}
@@ -305,7 +319,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                   crisp-image object-cover transition-all duration-500 rounded-3xl
                   ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}
                 `}
-                sizes="(max-width: 640px) 200px, (max-width: 1024px) 220px, 280px"
+                sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 200px"
                 quality={80}
                 priority={priority}
                 fetchPriority={priority ? 'high' : 'auto'}
@@ -336,14 +350,14 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
         </div>
 
         {/* Content Section */}
-        <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[300px] lg:min-h-[420px]">
-          <div className="space-y-4 lg:space-y-6">
+        <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[200px] lg:min-h-[260px]">
+          <div className="space-y-2 lg:space-y-3">
             {/* Title and Year */}
             <div className="lg:pr-20">
-              <h3 className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-tight text-white mb-2">
+              <h3 className="font-bold lg:font-semibold text-xl sm:text-2xl lg:text-[27px] leading-tight text-white mb-1">
                 {searchQuery ? highlightText(show.name, searchQuery, 'bg-yellow-400 text-black px-1 rounded font-bold') : show.name}
                 {airDate && (
-                  <span className="font-normal text-gray-300 ml-2 text-lg sm:text-xl lg:text-2xl">
+                  <span className="font-normal text-gray-300 ml-2 text-base sm:text-lg lg:text-xl">
                     ({airDate})
                   </span>
                 )}
@@ -370,7 +384,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
 
             {/* Description */}
             {description && (
-              <p className="text-gray-200 text-sm lg:text-base leading-relaxed line-clamp-3">
+              <p className="text-gray-200 text-sm lg:text-base leading-relaxed line-clamp-2">
                 {description}
               </p>
             )}
@@ -407,7 +421,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             ) : null}
 
             {/* Streaming Providers and IMDB */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
                 {streamingProviders.slice(0, 2).map((provider) => (
                   <div key={provider.provider_id} className="provider-badge">
@@ -421,9 +435,9 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 href={buildImdbUrl(show.imdb_id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="glass border border-white/20 hover:bg-white/15 text-white px-4 py-2 rounded-xl text-sm font-semibold group inline-flex items-center gap-2 self-center sm:self-start lg:self-auto transition-all duration-300 hover:scale-105 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20"
+                className="action-btn group inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg whitespace-nowrap self-center sm:self-start lg:self-auto"
               >
-                <span>IMDB</span>
+                <span className="font-semibold">IMDB</span>
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
@@ -437,11 +451,11 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
       {showActions && (
         <>
           {/* Divider */}
-          <div className="border-t border-white/20 mt-4 lg:mt-8 mb-4 lg:mb-6"></div>
+          <div className="border-t border-white/20 mt-3 lg:mt-4 mb-3 lg:mb-4"></div>
           
           <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
             {/* Primary Action - Watchlist */}
-            <div className="flex-1 max-w-xs mx-auto lg:mx-0">
+            <div className="mx-auto lg:mx-0">
               {ACTION_BUTTONS
                 .filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status))
                 .map((button) => {
@@ -452,18 +466,18 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
                       className={`
-                        ${button.className} ${button.hoverClassName} w-full group
+                        ${button.className} ${button.hoverClassName} group text-sm w-[200px]
                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                        transition-all duration-300 px-4 py-3 rounded-xl
+                        transition-all duration-300 px-3 py-2 rounded-lg whitespace-nowrap
                       `}
                     >
                       <div className="flex items-center justify-center gap-3">
                         <Image
                           src={button.icon}
                           alt={button.label}
-                          width={20}
-                          height={20}
-                          className="w-5 h-5 brightness-0 invert"
+                          width={16}
+                          height={16}
+                          className="w-4 h-4 brightness-0 invert"
                         />
                         <span className="font-bold">
                           {button.label}
@@ -476,7 +490,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
             </div>
 
             {/* Rating Buttons */}
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-end">
+            <div className="flex flex-wrap gap-2 justify-center lg:justify-end">
               {ACTION_BUTTONS
                 .filter(button => button.status !== 'watchlist' && !hiddenActions.includes(button.status))
                 .map((button) => {
@@ -487,20 +501,20 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                       onClick={() => handleAction(button.status)}
                       disabled={isProcessing}
                       className={`
-                        ${button.className} ${button.hoverClassName} group
+                        ${button.className} ${button.hoverClassName} group text-sm
                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                        transition-all duration-300 px-4 py-3 rounded-xl
+                        transition-all duration-300 px-3 py-2 rounded-lg whitespace-nowrap overflow-hidden
                       `}
-                    >
+                      >
                       <div className="flex items-center gap-2">
                         <Image
                           src={button.icon}
                           alt={button.label}
-                          width={20}
-                          height={20}
-                          className="w-5 h-5 brightness-0 invert"
+                          width={16}
+                          height={16}
+                          className="w-4 h-4 brightness-0 invert"
                         />
-                        <span className="font-bold">
+                        <span className="font-bold truncate">
                           {button.label}
                         </span>
                         {isUserRated && <span>✓</span>}

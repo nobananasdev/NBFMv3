@@ -247,7 +247,7 @@ export default function FilterSidebar() {
           {(hasActiveFilters || stagedGenres.length > 0 || stagedStreamers.length > 0 || (filterOptions && (stagedYearRange[0] !== filterOptions.yearRange[0] || stagedYearRange[1] !== filterOptions.yearRange[1]))) && (
             <button
               onClick={clearStaged}
-              className="btn-secondary w-full text-sm"
+              className="filter-btn w-full text-sm"
             >
               Clear All Filters
             </button>
@@ -255,7 +255,7 @@ export default function FilterSidebar() {
           <button
             onClick={applyFilters}
             disabled={!isDirty || isApplyingFilters}
-            className={`action-btn w-full font-semibold rounded-3xl flex items-center justify-center gap-2 ${isDirty && !isApplyingFilters ? 'gradient' : 'opacity-50 cursor-not-allowed'}`}
+            className={`action-btn w-full font-semibold rounded-3xl flex items-center justify-center gap-2 ${isDirty && !isApplyingFilters ? 'gradient' : 'opacity-60 cursor-not-allowed'}`}
           >
             {isApplyingFilters ? (
               <>

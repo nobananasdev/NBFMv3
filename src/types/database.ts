@@ -61,6 +61,8 @@ export interface Show {
   number_of_episodes: number | null
   type: string | null
   streaming_info: StreamingInfo | null
+  // Optional simplified list of streaming providers from DB (names or IDs)
+  streamers?: string[] | number[] | null
   next_season_date: string | null // DATE
   
   // Metadata and operations

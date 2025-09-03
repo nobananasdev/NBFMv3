@@ -40,14 +40,36 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
     }
   }, [])
 
+  // Support closing animation for inline mode by delaying unmount
+  const [isClosing, setIsClosing] = useState(false)
+  const [shouldRender, setShouldRender] = useState(isOpen)
+
   useEffect(() => {
-    if (!isOpen) {
-      setInput('')
-      setSuggestions([])
-      setLoading(false)
-      setError(null)
+    if (inline) {
+      if (isOpen) {
+        setShouldRender(true)
+        setIsClosing(false)
+      } else if (shouldRender) {
+        setIsClosing(true)
+        const t = setTimeout(() => {
+          setShouldRender(false)
+          setIsClosing(false)
+          setInput('')
+          setSuggestions([])
+          setLoading(false)
+          setError(null)
+        }, 220)
+        return () => clearTimeout(t)
+      }
+    } else {
+      if (!isOpen) {
+        setInput('')
+        setSuggestions([])
+        setLoading(false)
+        setError(null)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, inline, shouldRender])
 
   // Debounced quick suggestions after 3 characters (changed from 3+)
   useEffect(() => {
@@ -148,14 +170,15 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
     }
   }
 
-  if (!isOpen) return null
+  if (!inline && !isOpen) return null
 
   if (inline) {
+    if (!shouldRender) return null
     return (
-      <div className="w-full glass-card p-3 sm:p-4 lg:p-6 mb-6">
+      <div className={`w-full glass-card minimal-hover p-2 sm:p-3 lg:p-4 mb-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h3 className="font-bold text-[20px] sm:text-[24px] lg:text-[32px] leading-tight text-white">Search shows</h3>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h3 className="font-bold text-[16px] sm:text-[18px] lg:text-[20px] leading-tight text-white">Search shows</h3>
           <button
             onClick={onClose}
             className="icon-btn"
@@ -168,7 +191,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
         </div>
 
         {/* Body */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Input + Otsi */}
           <div className="flex gap-2">
             <div className="flex-1">
@@ -187,12 +210,12 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                   }
                 }}
                 placeholder="Type 3+ characters to search (name, cast, creator)..."
-                className="search-input"
+                className="search-input px-3 py-2 text-sm"
               />
             </div>
             <button
               onClick={handleCommit}
-              className="action-btn gradient"
+              className="action-btn minimal-hover px-3 py-2"
               aria-label="Search"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +225,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
           </div>
 
           {/* Suggestions */}
-          <div className="min-h-[84px]">
+          <div className="min-h-[60px]">
             {input.trim().length < 3 && (
               <div className="text-sm text-gray-500">Type 3+ characters to search across all shows</div>
             )}
@@ -223,7 +246,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
             )}
 
             {suggestions.length > 0 && (
-              <ul className="divide-y divide-transparent rounded-[15px] sm:rounded-[20px] border border-[var(--border-primary)] overflow-hidden glass">
+              <ul className="divide-y divide-transparent rounded-[12px] sm:rounded-[16px] border border-[var(--border-primary)] overflow-hidden glass">
                 {suggestions.map((sug) => {
                   const primary = sug.name || sug.original_name || 'Untitled'
                   const searchTerm = input.trim()
@@ -235,14 +258,14 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                           onCommit(primary, sug.imdb_id)
                           onClose()
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-[var(--bg-glass-hover)] focus:bg-[var(--bg-glass-hover)] transition-colors"
+                        className="search-suggestion"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-white">
+                            <div className="font-medium text-white text-[14px]">
                               {highlightText(primary, searchTerm, 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
                             </div>
-                            <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">
+                            <div className="text-[12px] text-[var(--text-secondary)] mt-0.5">
                               {sug.creators && sug.creators.length > 0 && (
                                 <span>
                                   Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
@@ -365,7 +388,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                           onCommit(primary, sug.imdb_id)
                           onClose()
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-[var(--bg-glass-hover)] focus:bg-[var(--bg-glass-hover)] transition-colors"
+                        className="search-suggestion"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
