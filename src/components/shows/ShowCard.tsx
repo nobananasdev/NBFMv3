@@ -402,30 +402,22 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
               </h3>
             </div>
 
-            {/* Labeled Meta — single line with wrap */}
+            {/* Meta as streamer-style labels (same layout) */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 text-xs lg:text-sm">
-              {/* Release date */}
+              {/* Release date label + badge */}
               <span className="font-semibold text-white text-sm leading-none">Release date:</span>
-              <span className="px-3 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium inline-flex items-center leading-none">
-                {airDate || 'Unknown'}
-              </span>
-              {/* separator removed */}
+              <div className="provider-badge">{airDate || 'Unknown'}</div>
 
-              {/* Seasons (no label) */}
-              <span className="px-3 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">{seasonsLabel}</span>
-              {/* separator removed */}
+              {/* Seasons as badge */}
+              <div className="provider-badge">{seasonsLabel}</div>
 
-              {/* Genres (no label) */}
+              {/* Genres as badges */}
               {genreNames.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {genreNames.map((genre, index) => (
-                    <span key={index} className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
+                genreNames.map((genre, index) => (
+                  <div key={index} className="provider-badge">{genre}</div>
+                ))
               ) : (
-                <span className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">Unknown</span>
+                <div className="provider-badge">Unknown</div>
               )}
             </div>
 
