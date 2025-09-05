@@ -407,9 +407,11 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
               {/* Release date label + badge */}
               <span className="font-semibold text-white text-sm leading-none">Release date:</span>
               <div className="provider-badge">{airDate || 'Unknown'}</div>
+              <span className="text-white/30 mx-1">•</span>
 
               {/* Seasons as badge */}
               <div className="provider-badge">{seasonsLabel}</div>
+              <span className="text-white/30 mx-1">•</span>
 
               {/* Genres as badges */}
               {genreNames.length > 0 ? (
