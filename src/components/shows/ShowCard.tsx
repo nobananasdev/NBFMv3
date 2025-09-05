@@ -92,6 +92,14 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const genreNames = show.genre_names || []
   const isNew = isNewRelease(show.first_air_date)
   
+  // Description clamp state with smooth expand/collapse
+  const [isDescExpanded, setIsDescExpanded] = useState(false)
+  const [canExpandDesc, setCanExpandDesc] = useState(false)
+  const [collapsedHeight, setCollapsedHeight] = useState<number>(0)
+  const [fullHeight, setFullHeight] = useState<number>(0)
+  const descTextRef = useRef<HTMLParagraphElement>(null)
+  const descWrapperRef = useRef<HTMLDivElement>(null)
+  
   // Get optimized image URL and generate blur placeholder
   const optimizedUrl = posterUrl ? getOptimizedImageUrl(posterUrl) : null
   const isPreloaded = optimizedUrl ? isImagePreloaded(optimizedUrl) : false
@@ -114,6 +122,35 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   useEffect(() => {
     setShouldLoadImage(true)
   }, [])
+
+  // Measure description heights to enable smooth max-height transition
+  useEffect(() => {
+    const measure = () => {
+      const p = descTextRef.current
+      const wrapper = descWrapperRef.current
+      if (!p || !wrapper) return
+
+      const style = window.getComputedStyle(p)
+      let lineHeight = parseFloat(style.lineHeight)
+      if (!lineHeight || Number.isNaN(lineHeight)) {
+        const fontSize = parseFloat(style.fontSize) || 16
+        lineHeight = fontSize * 1.5
+      }
+      const collapsed = Math.round(lineHeight * 3)
+      const full = p.scrollHeight
+
+      setCollapsedHeight(collapsed)
+      setFullHeight(full)
+      setCanExpandDesc(full > collapsed + 1)
+    }
+
+    const raf = requestAnimationFrame(measure)
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
+    }
+  }, [description])
 
   // Show a rating consistent with sorting fallback: our_score → imdb_rating → vote_average
   const getRating = () => {
@@ -351,21 +388,16 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
 
         {/* Content Section */}
         <div className="flex-1 flex flex-col justify-between text-center lg:text-left min-h-[200px] lg:min-h-[260px]">
-          <div className="space-y-2 lg:space-y-3">
+          <div className="space-y-3 lg:space-y-4">
             {/* Title and Year */}
             <div className="lg:pr-20">
-              <h3 className="font-bold lg:font-semibold text-xl sm:text-2xl lg:text-[27px] leading-tight text-white mb-1">
+              <h3 className="font-bold lg:font-semibold text-xl sm:text-2xl lg:text-[27px] leading-snug text-white mb-1">
                 {searchQuery ? highlightText(show.name, searchQuery, 'bg-yellow-400 text-black px-1 rounded font-bold') : show.name}
-                {airDate && (
-                  <span className="font-normal text-gray-300 ml-2 text-base sm:text-lg lg:text-xl">
-                    ({airDate})
-                  </span>
-                )}
               </h3>
             </div>
 
             {/* Genres and Series Info */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2 text-sm lg:text-base">
+            <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-center lg:justify-start lg:items-start gap-2 text-sm lg:text-base">
               {genreNames.length > 0 && (
                 <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
                   {genreNames.slice(0, 3).map((genre, index) => (
@@ -376,58 +408,101 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 </div>
               )}
               {seriesInfo && (
-                <span className="text-gray-300 font-medium">
+                <span className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium whitespace-nowrap inline-flex items-center self-center">
                   {seriesInfo}
+                </span>
+              )}
+              {airDate && (
+                <span className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5 self-center">
+                  <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  {airDate}
                 </span>
               )}
             </div>
 
-            {/* Description */}
+            {/* Description (clamped to 3 lines by default, smooth expand) */}
             {description && (
-              <p className="text-gray-200 text-sm lg:text-base leading-relaxed line-clamp-2">
-                {description}
-              </p>
+              <div className="space-y-3">
+                <div
+                  ref={descWrapperRef}
+                  style={{
+                    maxHeight: (isDescExpanded ? fullHeight : collapsedHeight) || undefined,
+                    overflow: 'hidden',
+                    transition: 'max-height 320ms ease',
+                  }}
+                  aria-expanded={isDescExpanded}
+                >
+                  <p
+                    ref={descTextRef}
+                    className="text-gray-200 text-sm lg:text-base leading-relaxed"
+                    style={{ margin: 0 }}
+                  >
+                    {description}
+                  </p>
+                </div>
+                {(canExpandDesc || isDescExpanded) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDescExpanded(prev => !prev)}
+                    className="text-xs sm:text-sm font-normal text-gray-300 hover:text-gray-200"
+                  >
+                    {isDescExpanded ? 'READ LESS' : 'READ MORE'}
+                  </button>
+                )}
+              </div>
             )}
 
-            {/* Creators and Cast */}
-            {(show.creators && show.creators.length > 0) || (show.main_cast && show.main_cast.length > 0) ? (
-              <div className="space-y-2">
-                {show.creators && show.creators.length > 0 && (
-                  <div>
-                    <span className="font-semibold text-white text-sm">Creators: </span>
-                    <span className="text-gray-300 text-sm">
-                      {searchQuery ? highlightTextArray(show.creators, searchQuery, ', ', 'bg-yellow-400 text-black px-1 rounded font-semibold') : show.creators.join(', ')}
-                    </span>
-                  </div>
-                )}
-                {show.main_cast && show.main_cast.length > 0 && (
-                  <div>
-                    <span className="font-semibold text-white text-sm">Cast: </span>
-                    <span className="text-gray-300 text-sm">
-                      {searchQuery ? (
-                        <>
-                          {highlightTextArray(show.main_cast.slice(0, 4), searchQuery, ', ', 'bg-yellow-400 text-black px-1 rounded font-semibold')}
-                          {show.main_cast.length > 4 ? '...' : ''}
-                        </>
-                      ) : (
-                        <>
-                          {show.main_cast.slice(0, 4).join(', ')}{show.main_cast.length > 4 ? '...' : ''}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                )}
+            {/* Cast */}
+            {show.main_cast && show.main_cast.length > 0 ? (
+              <div>
+                <span className="font-semibold text-white text-sm">Cast: </span>
+                <span className="text-gray-300 text-sm">
+                  {searchQuery ? (
+                    <>
+                      {highlightTextArray(show.main_cast.slice(0, 4), searchQuery, ', ', 'bg-yellow-400 text-black px-1 rounded font-semibold')}
+                      {show.main_cast.length > 4 ? '...' : ''}
+                    </>
+                  ) : (
+                    <>
+                      {show.main_cast.slice(0, 4).join(', ')}{show.main_cast.length > 4 ? '...' : ''}
+                    </>
+                  )}
+                </span>
               </div>
             ) : null}
 
             {/* Streaming Providers and IMDB */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
-                {streamingProviders.slice(0, 2).map((provider) => (
-                  <div key={provider.provider_id} className="provider-badge">
-                    {provider.provider_name}
-                  </div>
-                ))}
+                {streamingProviders.slice(0, 2).map((provider) => {
+                  const name = (provider.provider_name || '').toLowerCase()
+                  let variant = ''
+                  if (name.includes('netflix')) variant = 'provider-netflix'
+                  else if (name.includes('prime') || name.includes('amazon')) variant = 'provider-prime'
+                  else if (name.includes('disney')) variant = 'provider-disney'
+                  else if (name.includes('apple')) variant = 'provider-apple'
+                  else if (name.includes('hulu')) variant = 'provider-hulu'
+                  else if (name.includes('hbo') || name === 'max') variant = 'provider-max'
+                  else if (name.includes('paramount')) variant = 'provider-paramount'
+                  else if (name.includes('peacock')) variant = 'provider-peacock'
+                  else if (name.includes('viaplay')) variant = 'provider-viaplay'
+                  else if (name.includes('skyshowtime')) variant = 'provider-skyshowtime'
+                  else if (name.includes('mubi')) variant = 'provider-mubi'
+                  else if (name.includes('amc')) variant = 'provider-amc'
+                  else if (name.includes('britbox')) variant = 'provider-britbox'
+                  else if (name.includes('viki')) variant = 'provider-viki'
+
+                  return (
+                    <div key={provider.provider_id} className={`provider-badge ${variant}`}>
+                      {provider.provider_name}
+                    </div>
+                  )
+                })}
               </div>
 
               {/* IMDB Link */}
@@ -437,7 +512,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                 rel="noopener noreferrer"
                 className="action-btn group inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg whitespace-nowrap self-center sm:self-start lg:self-auto"
               >
-                <span className="font-semibold">IMDB</span>
+                <span className="font-medium">IMDB</span>
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
@@ -479,7 +554,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                           height={16}
                           className="w-4 h-4 brightness-0 invert"
                         />
-                        <span className="font-bold">
+                        <span className="font-medium">
                           {button.label}
                         </span>
                         {isUserRated && <span>✓</span>}
@@ -514,7 +589,7 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
                           height={16}
                           className="w-4 h-4 brightness-0 invert"
                         />
-                        <span className="font-bold truncate">
+                        <span className="font-medium truncate">
                           {button.label}
                         </span>
                         {isUserRated && <span>✓</span>}

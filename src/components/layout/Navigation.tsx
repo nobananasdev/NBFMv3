@@ -144,7 +144,7 @@ export default function Navigation() {
             
             <div>
               <h3 className={`
-                text-base font-bold tracking-wide transition-all duration-300
+                text-base font-semibold tracking-wide transition-all duration-300
                 ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'}
               `}>
                 {item.label}

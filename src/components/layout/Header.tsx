@@ -4,11 +4,28 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { Auth } from '../auth/Auth'
+import { useNavigation, NavigationSection } from '@/contexts/NavigationContext'
 
 export function Header() {
   const { user, getUserDisplayName, signOut, resetUserData, isResetting } = useAuth()
+  const { activeSection, setActiveSection, watchlistCount, ratedCount, discoverCount, newSeasonsCount } = useNavigation()
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [hovered, setHovered] = useState<NavigationSection | null>(null)
+
+  const gradients: Record<NavigationSection, string> = {
+    'discover': 'linear-gradient(135deg, rgba(99,102,241,0.35) 0%, rgba(139,92,246,0.35) 100%)', // indigo → purple
+    'new-seasons': 'linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.35) 100%)', // emerald → teal
+    'watchlist': 'linear-gradient(135deg, rgba(245,158,11,0.35) 0%, rgba(249,115,22,0.35) 100%)', // amber → orange
+    'rated': 'linear-gradient(135deg, rgba(236,72,153,0.35) 0%, rgba(244,63,94,0.35) 100%)', // pink → rose
+  }
+
+  const glows: Record<NavigationSection, string> = {
+    'discover': '0 0 18px rgba(99,102,241,0.35)',
+    'new-seasons': '0 0 18px rgba(16,185,129,0.35)',
+    'watchlist': '0 0 20px rgba(245,158,11,0.35)',
+    'rated': '0 0 18px rgba(236,72,153,0.35)'
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -44,16 +61,16 @@ export function Header() {
     <>
       <header className="relative z-50 header-glass animate-fade-in">
         <div className="container mx-auto px-4 sm:px-6 container-content">
-          <div className="flex items-center justify-between h-20 lg:h-24">
+          <div className="flex items-center justify-between h-20 lg:h-24 gap-4">
             {/* Logo Section */}
             <div className="flex items-center flex-shrink-0">
               <div className="relative">
                 <Image
-                  src="/Nobananasformelogo.svg"
+                  src="/logo.png"
                   alt="No Bananas For Me"
                   width={400}
                   height={200}
-                  className="h-12 sm:h-14 lg:h-16 w-auto logo-image animate-float"
+                  className="h-12 sm:h-14 lg:h-16 w-auto logo-image"
                   priority
                   quality={100}
                   unoptimized
@@ -62,6 +79,57 @@ export function Header() {
                 <div className="absolute inset-0 -z-10 blur-xl opacity-30 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
               </div>
             </div>
+
+            {/* Simple Nav (desktop/tablet) */}
+            <nav className="hidden md:flex items-center gap-2 lg:gap-3 flex-1 justify-center">
+              {[
+                { id: 'discover', label: 'Discovery', count: discoverCount },
+                { id: 'new-seasons', label: 'New Seasons', count: newSeasonsCount },
+                { id: 'watchlist', label: 'Watchlist', count: watchlistCount },
+                { id: 'rated', label: 'Rated', count: ratedCount },
+              ].map((item) => {
+                const isActive = activeSection === (item.id as NavigationSection)
+                const isHover = hovered === (item.id as NavigationSection)
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id as NavigationSection)}
+                    onMouseEnter={() => setHovered(item.id as NavigationSection)}
+                    onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(item.id as NavigationSection)}
+                    onBlur={() => setHovered(null)}
+                    className={`relative overflow-hidden px-3 lg:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap border transition-all duration-300 ease-out hover:-translate-y-0.5 ${
+                      isActive || isHover
+                        ? 'text-white border-transparent'
+                        : 'text-white/75 hover:text-white border-transparent'
+                    }`}
+                    style={(isActive || isHover) ? { boxShadow: `var(--shadow-lg), ${glows[item.id as NavigationSection]}` } : undefined}
+                  >
+                    {/* Smooth gradient overlay for active/hover */}
+                    <span
+                      aria-hidden
+                      className={`absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-300 ease-out ${
+                        isActive || isHover ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{ background: gradients[item.id as NavigationSection] }}
+                    />
+
+                    {/* Content */}
+                    <span className="relative z-10 flex items-center">
+                      <span>{item.label}</span>
+                      <span
+                        className={`ml-2 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors ${
+                          isActive || isHover ? 'bg-white/20 text-white' : 'bg-white/10 text-white/80'
+                        }`}
+                        aria-live="polite"
+                      >
+                        {typeof item.count === 'number' && item.count >= 0 ? new Intl.NumberFormat('en-US').format(item.count) : '0'}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </nav>
             
             {/* User Actions */}
             {user ? (

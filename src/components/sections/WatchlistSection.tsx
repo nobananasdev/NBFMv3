@@ -101,6 +101,7 @@ export function WatchlistSection() {
                   options={WATCHLIST_SORT_OPTIONS}
                   className="w-full sm:w-auto"
                   buttonClassName="h-9"
+                  theme="watchlist"
                 />
               </div>
               <div className="order-2 sm:order-1 text-xs sm:text-sm text-gray-500">

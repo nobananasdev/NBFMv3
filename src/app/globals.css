@@ -176,21 +176,24 @@
     border-color: var(--border-accent);
   }
   
-  /* Navigation Pills */
+  /* Navigation Pills — align base styling/layout with action buttons (keep existing hovers) */
   .nav-pill {
-    @apply relative rounded-2xl px-4 py-2 transition-all duration-200;
+    @apply relative rounded-2xl px-4 py-2.5 font-semibold transition-all duration-200;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-glass);
-    border: 1px solid var(--border-secondary);
-    backdrop-filter: blur(10px);
+    background: transparent; /* match .action-btn base */
+    border: 1px solid var(--border-primary); /* match .action-btn border */
+    color: var(--text-primary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   
   .nav-pill.active {
     background: var(--gradient-primary);
     border-color: transparent;
-    box-shadow: none; /* reduce glow for minimal look */
+    /* Add glow when active (requested for filters) */
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
   }
   
   /* Subtle lift on hover for all pills */
@@ -223,17 +226,83 @@
     background: var(--gradient-rating), var(--bg-glass);
     border: 1px solid rgba(16, 185, 129, 0.35);
     backdrop-filter: blur(10px);
-    box-shadow: var(--shadow-md);
+    /* Add soft emerald glow */
+    box-shadow: var(--shadow-md), 0 0 18px rgba(16, 185, 129, 0.35);
+    transition: box-shadow 300ms ease;
     color: var(--text-primary);
+  }
+  .rating-badge:hover,
+  .rating-badge:focus {
+    box-shadow: var(--shadow-lg), 0 0 24px rgba(16, 185, 129, 0.5);
   }
   
   /* Streaming Provider Badge */
   .provider-badge {
     @apply rounded-xl px-3 py-1.5 text-xs font-semibold;
     background: var(--bg-glass);
-    border: 1px solid var(--border-primary);
+    border: none; /* remove border per request */
     backdrop-filter: blur(10px);
-    color: var(--text-secondary);
+    color: var(--text-primary);
+  }
+
+  /* Provider-specific gentle gradients */
+  .provider-netflix {
+    background: linear-gradient(135deg, rgba(229, 9, 20, 0.28) 0%, rgba(229, 9, 20, 0.16) 100%);
+    color: #fff;
+  }
+  .provider-prime,
+  .provider-amazon {
+    background: linear-gradient(135deg, rgba(0, 168, 225, 0.26) 0%, rgba(15, 121, 175, 0.16) 100%);
+    color: #e6f6ff;
+  }
+  .provider-disney {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.26) 0%, rgba(79, 70, 229, 0.18) 100%);
+    color: #e8eeff;
+  }
+  .provider-apple {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.5) 0%, rgba(0, 0, 0, 0.36) 100%);
+    color: #ffffff;
+  }
+  .provider-hulu {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.24) 0%, rgba(5, 150, 105, 0.16) 100%);
+    color: #edfffa;
+  }
+  .provider-max,
+  .provider-hbo {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.26) 0%, rgba(124, 58, 237, 0.18) 100%);
+    color: #f1edff;
+  }
+  .provider-paramount {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.26) 0%, rgba(37, 99, 235, 0.18) 100%);
+    color: #eef6ff;
+  }
+  .provider-peacock {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.26) 0%, rgba(249, 115, 22, 0.16) 100%);
+    color: #ffffff; /* match other streamer labels */
+  }
+  .provider-viaplay {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.24) 0%, rgba(219, 39, 119, 0.16) 100%);
+    color: #fff0f7;
+  }
+  .provider-skyshowtime {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(99, 102, 241, 0.18) 100%);
+    color: #eef2ff;
+  }
+  .provider-mubi {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.24) 0%, rgba(2, 132, 199, 0.16) 100%);
+    color: #f0faff;
+  }
+  .provider-amc {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(220, 38, 38, 0.14) 100%);
+    color: #fff5f5;
+  }
+  .provider-britbox {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.22) 0%, rgba(236, 72, 153, 0.18) 100%);
+    color: #f2fffb;
+  }
+  .provider-viki {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.24) 0%, rgba(2, 132, 199, 0.16) 100%);
+    color: #eef6ff;
   }
 
   /* NEW badge – stronger yellow glass background + black text */
@@ -242,16 +311,23 @@
     /* More yellow, less transparent */
     background: linear-gradient(135deg, rgba(250, 204, 21, 0.52) 0%, rgba(250, 204, 21, 0.36) 100%);
     color: black;
-    border: 1px solid rgba(245, 158, 11, 0.75); /* stronger amber border */
+    border: none; /* remove border per request */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    /* Add soft amber glow */
+    box-shadow: var(--shadow-md), 0 0 18px rgba(245, 158, 11, 0.35);
+    transition: box-shadow 300ms ease;
+  }
+  .new-badge:hover,
+  .new-badge:focus {
+    box-shadow: var(--shadow-lg), 0 0 24px rgba(245, 158, 11, 0.5);
   }
   
   /* Action Button */
   .action-btn {
-    @apply relative overflow-hidden rounded-2xl px-4 py-2.5 font-semibold transition-all duration-300;
+    @apply relative overflow-hidden rounded-2xl px-4 py-2.5 font-medium transition-all duration-300;
     background: transparent;
-    border: 1px solid var(--border-primary);
+    border: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     color: var(--text-primary);
@@ -259,7 +335,6 @@
   
   .action-btn:not(.gradient):hover {
     background: var(--bg-glass-hover);
-    border-color: var(--border-accent);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(10px);
@@ -310,61 +385,56 @@
   
 /* Rating intensity variants (glass with clear worst -> best scale) */
   .action-btn.rate-bad {
-    border-color: rgba(239, 68, 68, 0.35); /* red-500 */
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%);
     color: var(--text-primary);
     box-shadow: var(--shadow-md);
   }
   .action-btn.rate-bad:hover {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%);
-    border-color: rgba(239, 68, 68, 0.6);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.24) 0%, rgba(255, 255, 255, 0.10) 100%);
     box-shadow: var(--shadow-lg), 0 0 18px rgba(239, 68, 68, 0.25);
     transform: translateY(-2px);
   }
 
   .action-btn.rate-mid {
-    border-color: rgba(245, 158, 11, 0.35); /* amber-500 */
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%);
     color: var(--text-primary);
     box-shadow: var(--shadow-md);
   }
   .action-btn.rate-mid:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%);
-    border-color: rgba(245, 158, 11, 0.6);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(255, 255, 255, 0.10) 100%);
     box-shadow: var(--shadow-lg), 0 0 18px rgba(245, 158, 11, 0.25);
     transform: translateY(-2px);
   }
 
   .action-btn.rate-good {
-    border-color: rgba(16, 185, 129, 0.35); /* emerald-500 */
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(255, 255, 255, 0.06) 100%);
     color: var(--text-primary);
     box-shadow: var(--shadow-md);
   }
   .action-btn.rate-good:hover {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(255, 255, 255, 0.06) 100%);
-    border-color: rgba(16, 185, 129, 0.6);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(255, 255, 255, 0.10) 100%);
     box-shadow: var(--shadow-lg), 0 0 18px rgba(16, 185, 129, 0.25);
     transform: translateY(-2px);
   }
 
   /* Watchlist button - similar to navigation watchlist with yellow-orange gradient */
   .action-btn.watchlist-btn {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(249, 115, 22, 0.12) 100%);
-    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(249, 115, 22, 0.14) 100%);
     color: var(--text-primary);
     box-shadow: var(--shadow-md);
   }
   
   .action-btn.watchlist-btn:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(249, 115, 22, 0.20) 100%);
-    border-color: rgba(245, 158, 11, 0.5);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(249, 115, 22, 0.24) 100%);
     box-shadow: var(--shadow-lg), 0 0 20px rgba(245, 158, 11, 0.3);
     transform: translateY(-2px);
   }
 
-  /* Header Glass */
+  /* Header Transparent */
   .header-glass {
-    background: rgba(10, 10, 11, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-bottom: 1px solid var(--border-secondary);
   }
   
@@ -407,7 +477,8 @@
     background: var(--gradient-primary);
     border-color: transparent;
     color: white;
-    box-shadow: var(--shadow-glow);
+    /* Match nav button selected glow */
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
   }
 
   /* Modal Panel */
@@ -437,6 +508,13 @@
 
 /* Animations */
 @layer utilities {
+  /* Multiline clamp utilities */
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   /* Shared content container width */
   .container-content {
     max-width: 1120px;

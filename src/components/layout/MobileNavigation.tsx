@@ -80,7 +80,7 @@ export default function MobileNavigation() {
         </div>
         {/* Content: title on left, bubble count on right */}
         <div className="relative z-10 flex items-center justify-between min-h-[44px]">
-          <h3 className={`text-xs leading-4 font-bold tracking-wide transition-all duration-300 ${isActive ? 'text-white' : 'text-white/80'}`}>{item.label}</h3>
+          <h3 className={`text-xs leading-4 font-semibold tracking-wide transition-all duration-300 ${isActive ? 'text-white' : 'text-white/80'}`}>{item.label}</h3>
           <CountBadge value={item.count} isActive={isActive} />
         </div>
         <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-10 ${isActive ? 'opacity-0' : ''}`}></div>

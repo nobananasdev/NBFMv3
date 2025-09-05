@@ -21,17 +21,27 @@ session_commit "work-name"     # Session checkpoint
 
 ## Features
 
-- **Discovery Feed** - Browse curated TV shows with rating system
-- **Personal Lists** - Organize shows into Watchlist and Rated lists
-- **New Seasons Tracking** - Get notified about upcoming seasons
-- **User Authentication** - Secure login with Supabase Auth
-- **Rating System** - Simple 3-option rating (Loved It, Liked It, Not For Me)
+- **Discovery Feed** – Curated TV shows with preloaded infinite scroll and smooth image loading
+- **Search & Suggestions** – Inline search panel with live suggestions (title, creators, cast), highlights, and full results
+- **Filters** – Genres, year range, and streaming providers for Discovery (staged apply, smart fetching)
+- **Personal Lists** – Watchlist and Rated (Loved It, Liked It, Not For Me)
+- **New Seasons Tracking** – Upcoming and recently released seasons for liked/loved shows
+- **Navigation Counters** – Discovery total count; Watchlist/Rated/New Seasons are user-specific and refresh after actions
+- **User Authentication** – Supabase Auth; mock user enabled locally for development
+- **Rating System** – 3-option rating (Loved It, Liked It, Not For Me) + Watchlist action
 
 ## Tech Stack
 
 - **Frontend**: Next.js 14+ with App Router, TypeScript, Tailwind CSS
 - **Backend**: Supabase (PostgreSQL, Authentication, Storage)
 - **Development**: Local development on localhost:3000
+
+## UI Theme
+
+- **Style**: Dark, glassmorphism-inspired with subtle gradients and animations
+- **Cards**: Consistent height, rounded corners, hover elevation and gentle scale
+- **Images**: Optimized URLs with blur placeholders; “NEW” badge for recent releases
+- **Actions**: Animated success messages (e.g., “Loved it! ❤️”, “Liked it! 👍”, “Bananas! 🍌”)
 
 ## Getting Started
 
@@ -57,6 +67,17 @@ session_commit "work-name"     # Session checkpoint
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+### Environment
+
+Create `.env.local` (or reuse existing) with:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+In development, a mock user is auto-initialized to simplify testing. The header includes a “Reset Data” button to clear mock user lists/ratings.
+
 ## Project Structure
 
 ```
@@ -66,6 +87,9 @@ src/
 │   ├── layout.tsx      # Root layout
 │   └── page.tsx        # Homepage
 ├── components/         # Reusable UI components
+│   ├── layout/         # Header, navigation, main layout
+│   ├── sections/       # Discovery, Watchlist, Rated, New Seasons
+│   └── ui/             # SortSelector, FilterSidebar, SearchPanel, etc.
 ├── lib/               # Utility functions and configurations
 │   └── supabase.ts    # Supabase client setup
 └── types/             # TypeScript definitions
@@ -90,9 +114,15 @@ The application connects to an existing Supabase database with the following mai
 
 ## Color Scheme
 
-- **Page Background**: #faf9f7 (light warm beige)
-- **Card Background**: #ffffff (pure white)
-- **Shadow**: 0 2px 8px rgba(0,0,0,0.08)
-- **Hover Shadow**: 0 4px 16px rgba(0,0,0,0.12)
-- **Border Radius**: 12px cards, 8px buttons
-- **Transitions**: all 0.2s ease
+- **Background**: Layered radial/linear gradients over a dark base
+- **Card/Glass**: Semi-transparent surfaces with soft borders and blur
+- **Accents**: Indigo/Purple gradients; success/ready states with subtle pulses
+- **Motion**: fade-in, slide-up, and success-bounce animations; quick and unobtrusive
+
+## Navigation & Views
+
+- **Navigation**: Discovery, New Seasons, Watchlist, Rated; sticky; counters refresh after actions; clicking Discovery again resets search
+- **Discovery**: Infinite scroll with image preloading; sorts: Latest Shows, By Rating; inline search and filter sidebar
+- **Watchlist**: Sorts by Recently Added or Best Rated
+- **Rated**: Sorts by Recently Added or By Rating (grouped logic)
+- **New Seasons**: Upcoming and last 6 months, infinite scroll

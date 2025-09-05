@@ -134,6 +134,20 @@ export default function FilterSidebar() {
     return !(sameGenres && sameStreamers && sameYear)
   })()
 
+  // Emphasis and enabled state for Apply button:
+  // - If user has any staged selections OR there are already active filters,
+  //   make the button look emphasized even if not "dirty" (so it isn't washed out).
+  // - Keep it disabled only when nothing is selected and nothing changed, or while applying.
+  const hasStagedSelections = (() => {
+    const yearDiffersFromDefault = filterOptions
+      ? (stagedYearRange[0] !== filterOptions.yearRange[0] || stagedYearRange[1] !== filterOptions.yearRange[1])
+      : false
+    return stagedGenres.length > 0 || stagedStreamers.length > 0 || yearDiffersFromDefault
+  })()
+
+  const canApply = (isDirty || hasStagedSelections || hasActiveFilters) && !isApplyingFilters
+  const applyBtnClasses = `action-btn w-full text-sm font-medium rounded-3xl flex items-center justify-center gap-2 ${canApply ? 'gradient' : 'opacity-60 cursor-not-allowed'}`
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Overlay */}
@@ -254,8 +268,8 @@ export default function FilterSidebar() {
           )}
           <button
             onClick={applyFilters}
-            disabled={!isDirty || isApplyingFilters}
-            className={`action-btn w-full font-semibold rounded-3xl flex items-center justify-center gap-2 ${isDirty && !isApplyingFilters ? 'gradient' : 'opacity-60 cursor-not-allowed'}`}
+            disabled={!canApply}
+            className={applyBtnClasses}
           >
             {isApplyingFilters ? (
               <>

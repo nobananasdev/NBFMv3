@@ -32,7 +32,7 @@ function DiscoverContent() {
     isPreloading,
     preloadNext
   } = useDiscoverShows(20)
-  const { setFilterOptions, filters, isApplyingFilters } = useFilter()
+  const { setFilterOptions, filters, isApplyingFilters, toggleFilter, hasActiveFilters } = useFilter()
   const observerRef = useRef<HTMLDivElement>(null)
   const preloadObserverRef = useRef<HTMLDivElement>(null)
 
@@ -302,52 +302,110 @@ function DiscoverContent() {
   // Show inline loading indicator when applying filters with existing content
   const showInlineLoading = (isApplyingFilters || (effectiveLoading && effectiveShows.length > 0)) && !isSearchActive
 
+  // Debounce the inline loading visual to avoid quick flicker
+  const [debouncedInlineLoading, setDebouncedInlineLoading] = useState(false)
+  useEffect(() => {
+    if (showInlineLoading) {
+      const t = setTimeout(() => setDebouncedInlineLoading(true), 220)
+      return () => clearTimeout(t)
+    } else {
+      setDebouncedInlineLoading(false)
+    }
+  }, [showInlineLoading])
+
+  const listContainerRef = useRef<HTMLDivElement>(null)
+
+  // Lock list container height during loading to reduce layout jump
+  useEffect(() => {
+    const el = listContainerRef.current
+    if (!el) return
+    if (debouncedInlineLoading) {
+      const h = el.clientHeight
+      if (h > 0) {
+        el.style.minHeight = `${h}px`
+      }
+    } else {
+      el.style.minHeight = ''
+    }
+  }, [debouncedInlineLoading])
+
   return (
     <>
       <div className="relative space-y-6">
-        {/* Controls: on mobile stack controls first, then count below; on larger screens keep in one row */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-nowrap sm:justify-between sm:items-center">
-          <div className="order-1 sm:order-1 flex gap-2 sm:gap-4 w-full items-center flex-nowrap">
-            {/* Search pill (same style as Sort pills) */}
-            <button
-              onClick={() => setIsSearchPanelOpen(prev => !prev)}
-              className={`nav-pill h-9 ${isSearchActive ? 'active' : ''}`}
-              aria-label="Open search"
-            >
-              <svg
-                className="w-4 h-4 sm:w-5 sm:h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        {/* Controls: left (search+filter), center (counter), right (sort) */}
+        <div className="w-full">
+          <div className="relative flex items-center w-full">
+            {/* Left group: Search + Filter */}
+            <div className="flex gap-2 sm:gap-4 items-center">
+              <button
+                onClick={() => setIsSearchPanelOpen(prev => !prev)}
+                className={`nav-pill h-9 ${isSearchActive ? 'active' : ''}`}
+                aria-label="Open search"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-
-            <SortSelector
-              value={isSearchActive ? searchSortBy : sortBy}
-              onChange={isSearchActive ? handleSearchSortChange : setSortBy}
-              options={DISCOVER_SORT_OPTIONS}
-              showFilter={true}
-              className="flex-1 sm:w-auto"
-              mobileEqualWidth={false}
-              buttonClassName="h-9"
-            />
-          </div>
-
-          {/* Count indicator: placed below controls on mobile, inline on larger screens */}
-          <div className="order-2 sm:order-1 text-xs sm:text-sm text-gray-500 whitespace-nowrap sm:shrink-0">
-            {effectiveShows.length > 0 && !showInlineLoading &&
-              `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
-            {showInlineLoading && (
-              <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span>Loading filtered content...</span>
-              </span>
-            )}
+              </button>
+
+              <button
+                onClick={toggleFilter}
+                aria-label="Ava filtrid"
+                title="Filtrid"
+                className={`nav-pill relative ${hasActiveFilters ? 'active' : ''} h-9`}
+              >
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5 mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 6h10m8 0h-4m-4 0a2 2 0 11-4 0 2 2 0 014 0zM3 12h4m14 0H10m8 0a2 2 0 10-4 0 2 2 0 004 0zM3 18h10m8 0h-4m-4 0a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {hasActiveFilters && (
+                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
+                )}
+              </button>
+            </div>
+
+            {/* Center counter */}
+            <div className="absolute left-1/2 -translate-x-1/2 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
+              {effectiveShows.length > 0 && !debouncedInlineLoading &&
+                `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
+              {debouncedInlineLoading && (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Loading filtered content...</span>
+                </span>
+              )}
+            </div>
+
+            {/* Right group: Sort options only */}
+            <div className="ml-auto flex items-center">
+              <SortSelector
+                value={isSearchActive ? searchSortBy : sortBy}
+                onChange={isSearchActive ? handleSearchSortChange : setSortBy}
+                options={DISCOVER_SORT_OPTIONS}
+                showFilter={false}
+                className="w-auto"
+                mobileEqualWidth={false}
+                buttonClassName="h-9"
+                theme="discover"
+              />
+            </div>
           </div>
         </div>
 
@@ -374,8 +432,8 @@ function DiscoverContent() {
           </div>
         )}
 
-        {/* Shows list with smooth transition during filter application */}
-        <div className={`transition-opacity duration-200 ${showInlineLoading ? 'opacity-40' : 'opacity-100'}`}>
+        {/* Shows list: keep opacity steady to avoid flicker */}
+        <div ref={listContainerRef}>
           <ShowsList
             shows={effectiveShows}
             loading={showLoadingState}

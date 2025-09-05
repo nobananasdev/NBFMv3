@@ -4,13 +4,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { FilterProvider } from '@/contexts/FilterContext'
 import { Header } from './Header'
-import Navigation from './Navigation'
 import MobileNavigation from './MobileNavigation'
 import { Auth } from '../auth/Auth'
 import { DiscoverSection } from '../sections/DiscoverSection'
 import { WatchlistSection } from '../sections/WatchlistSection'
 import { NewSeasonsSection } from '../sections/NewSeasonsSection'
 import { RatedSection } from '../sections/RatedSection'
+import ScrollToTopButton from '../ui/ScrollToTopButton'
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -61,12 +61,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <Header />
         {/* Mobile-only nav */}
         <MobileNavigation />
-        {/* Desktop/Tablet nav */}
-        <Navigation />
+        {/* Desktop/Tablet nav moved into Header */}
 
-        <main className="container mx-auto px-4 md:px-6 py-6 md:py-8 container-content animate-fade-in">
+        <main id="main-content" className="container mx-auto px-4 md:px-6 py-6 md:py-8 container-content animate-fade-in">
           {renderSection()}
         </main>
+        {/* Global scroll-to-top button */}
+        <ScrollToTopButton />
       </div>
     </FilterProvider>
   )
