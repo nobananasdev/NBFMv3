@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { MainLayout } from '@/components/layout/MainLayout'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'No Bananas For Me',
@@ -28,7 +25,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="//image.tmdb.org" />
       </head>
-      <body className={inter.className}>
+      <body>
         <AuthProvider>
           <NavigationProvider>
             <MainLayout>

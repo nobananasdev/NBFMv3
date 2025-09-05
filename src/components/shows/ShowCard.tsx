@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   filterStreamingProviders,
   formatAirDate,
-  formatSeriesInfo,
   getShowDescription,
   getPosterUrl,
   isNewRelease,
@@ -87,10 +86,17 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
   const posterUrl = getPosterUrl(show)
   const streamingProviders = filterStreamingProviders(show)
   const airDate = formatAirDate(show.first_air_date)
-  const seriesInfo = formatSeriesInfo(show)
   const description = getShowDescription(show)
   const genreNames = show.genre_names || []
   const isNew = isNewRelease(show.first_air_date)
+  // Explicit seasons label per request
+  const seasonsLabel = (() => {
+    if (show.type === 'Miniseries') return 'Mini Series'
+    const n = (show as any).number_of_seasons as number | undefined
+    if (!n || n <= 0) return 'Unknown'
+    if (n === 1) return '1 season'
+    return `${n} seasons`
+  })()
   
   // Description clamp state with smooth expand/collapse
   const [isDescExpanded, setIsDescExpanded] = useState(false)
@@ -396,33 +402,32 @@ function ShowCardComponent({ show, onAction, hiddenActions = [], showActions = t
               </h3>
             </div>
 
-            {/* Genres and Series Info */}
-            <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-center lg:justify-start lg:items-start gap-2 text-sm lg:text-base">
-              {genreNames.length > 0 && (
-                <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
-                  {genreNames.slice(0, 3).map((genre, index) => (
-                    <span key={index} className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {seriesInfo && (
-                <span className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium whitespace-nowrap inline-flex items-center self-center">
-                  {seriesInfo}
+            {/* Labeled Meta Lines (compact height) */}
+            <div className="flex flex-col gap-2 text-xs lg:text-sm">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                <span className="font-semibold text-white text-sm leading-none">Release date:</span>
+                <span className="px-3 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium inline-flex items-center leading-none">
+                  {airDate || 'Unknown'}
                 </span>
-              )}
-              {airDate && (
-                <span className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5 self-center">
-                  <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  {airDate}
-                </span>
-              )}
+              </div>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                <span className="font-semibold text-white text-sm leading-none">Seasons:</span>
+                <span className="px-3 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">{seasonsLabel}</span>
+              </div>
+              <div className="flex items-start justify-center lg:justify-start gap-2">
+                <span className="font-semibold text-white text-sm mt-0 leading-none">Genres:</span>
+                {genreNames.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {genreNames.map((genre, index) => (
+                      <span key={index} className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white text-[13px] font-medium leading-none">Unknown</span>
+                )}
+              </div>
             </div>
 
             {/* Description (clamped to 3 lines by default, smooth expand) */}
