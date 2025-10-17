@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useNewSeasonsShows } from '@/hooks/useShows'
 import NewSeasonsList from '@/components/shows/NewSeasonsList'
 import { useAuth } from '@/contexts/AuthContext'
@@ -17,59 +17,21 @@ export function NewSeasonsSection() {
     isPreloading,
     preloadNext
   } = useNewSeasonsShows(20)
-  const observerRef = useRef<HTMLDivElement>(null)
-  const preloadObserverRef = useRef<HTMLDivElement>(null)
 
-  // Preload trigger
-  const handlePreloadObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries
-      if (target.isIntersecting && hasMore && !loading && !isPreloading) {
-        preloadNext()
-      }
-    },
-    [hasMore, loading, isPreloading, preloadNext]
-  )
-
-  // Infinite scroll implementation
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries
-      if (target.isIntersecting && hasMore && !loading) {
-        fetchMore()
-      }
-    },
-    [hasMore, loading, fetchMore]
-  )
-
-  // Preload observer
-  useEffect(() => {
-    const element = preloadObserverRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(handlePreloadObserver, {
-      threshold: 0.1,
-      rootMargin: '600px'
-    })
-
-    observer.observe(element)
-
-    return () => observer.disconnect()
-  }, [handlePreloadObserver])
-
-  useEffect(() => {
-    const element = observerRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(handleObserver, {
-      threshold: 0.1,
-      rootMargin: '100px'
-    })
-
-    observer.observe(element)
-
-    return () => observer.disconnect()
-  }, [handleObserver])
+  // Combined handler for near-end detection
+  const handleNearEnd = useCallback(() => {
+    if (!hasMore || loading || isPreloading) return
+    
+    console.log('🔄 [NewSeasonsSection] Near end detected, triggering preload')
+    
+    // If we have preloaded shows, fetch more immediately
+    if (preloadedShows.length > 0) {
+      fetchMore()
+    } else {
+      // Otherwise, start preloading
+      preloadNext()
+    }
+  }, [hasMore, loading, isPreloading, preloadedShows.length, fetchMore, preloadNext])
 
   return (
     <div className="space-y-6">
@@ -94,23 +56,14 @@ export function NewSeasonsSection() {
             loading={loading}
             error={error}
             emptyMessage="No new seasons from shows you've rated as Loved It or Liked It"
+            preloadedShows={preloadedShows}
+            onNearEnd={handleNearEnd}
+            hasMore={hasMore}
           />
 
-          {/* Preload Trigger */}
-          {hasMore && shows.length > 10 && (
-            <div
-              ref={preloadObserverRef}
-              className="h-1 w-full"
-              style={{
-                position: 'relative',
-                top: '-30vh'
-              }}
-            />
-          )}
-
-          {/* Infinite Scroll Trigger */}
-          {hasMore && (
-            <div ref={observerRef} className="text-center py-8">
+          {/* Loading indicator at the bottom */}
+          {hasMore && shows.length > 0 && (
+            <div className="text-center py-8">
               {loading && (
                 <div className="flex flex-col items-center space-y-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -121,12 +74,6 @@ export function NewSeasonsSection() {
                 <div className="flex flex-col items-center space-y-3">
                   <div className="animate-pulse h-2 w-32 bg-blue-200 rounded"></div>
                   <div className="text-xs text-gray-400">Preparing next shows...</div>
-                </div>
-              )}
-              {!loading && !isPreloading && preloadedShows.length > 0 && (
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="h-2 w-32 bg-green-200 rounded"></div>
-                  <div className="text-xs text-green-600">Next shows ready!</div>
                 </div>
               )}
             </div>

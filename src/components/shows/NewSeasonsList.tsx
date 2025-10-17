@@ -1,10 +1,52 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { ShowWithGenres } from '@/lib/shows'
-import { getPosterUrl, formatSeasonInfo } from '@/lib/shows'
+import { useState, useEffect, useRef } from 'react'
 import ShowCard from './ShowCard'
+import { ShowWithGenres, formatSeasonInfo } from '@/lib/shows'
+import type { ShowStatus } from '@/types/database'
+import { preloadShowImagesOptimized } from '@/lib/imagePreloader'
+
+function getRelativeTimingLabel(show: ShowWithGenres, isUpcoming: boolean): string | null {
+  const rawDate = (show as any).next_season_date
+  if (!rawDate) return null
+
+  const target = new Date(rawDate)
+  if (Number.isNaN(target.getTime())) return null
+
+  const now = new Date()
+  // Normalize times to midnight to avoid timezone jitter
+  const diffMs = target.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+
+  if (isUpcoming) {
+    if (diffDays <= 0) return 'Arrives today'
+    if (diffDays === 1) return 'Arrives tomorrow'
+    if (diffDays < 7) return `In ${diffDays} days`
+    if (diffDays < 35) {
+      const weeks = Math.round(diffDays / 7)
+      return `In ${weeks} week${weeks === 1 ? '' : 's'}`
+    }
+    if (diffDays < 210) {
+      const months = Math.round(diffDays / 30)
+      return `In ${months} month${months === 1 ? '' : 's'}`
+    }
+    return 'Coming soon'
+  }
+
+  const daysAgo = Math.abs(diffDays)
+  if (daysAgo === 0) return 'Dropped today'
+  if (daysAgo === 1) return 'Dropped yesterday'
+  if (daysAgo < 7) return `${daysAgo} days ago`
+  if (daysAgo < 35) {
+    const weeks = Math.round(daysAgo / 7)
+    return `${weeks} week${weeks === 1 ? '' : 's'} ago`
+  }
+  if (daysAgo < 210) {
+    const months = Math.round(daysAgo / 30)
+    return `${months} month${months === 1 ? '' : 's'} ago`
+  }
+  return 'Released recently'
+}
 
 interface NewSeasonsListProps {
   shows: ShowWithGenres[]
@@ -12,6 +54,9 @@ interface NewSeasonsListProps {
   error?: any
   emptyMessage?: string
   className?: string
+  preloadedShows?: ShowWithGenres[]
+  onNearEnd?: () => void
+  hasMore?: boolean
 }
 
 export default function NewSeasonsList({
@@ -19,30 +64,133 @@ export default function NewSeasonsList({
   loading,
   error,
   emptyMessage = 'No new seasons found',
-  className = ''
+  className = '',
+  preloadedShows = [],
+  onNearEnd,
+  hasMore = false
 }: NewSeasonsListProps) {
   const [displayedShows, setDisplayedShows] = useState<ShowWithGenres[]>(shows)
-  const [expandedShowId, setExpandedShowId] = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
     setDisplayedShows(shows)
   }, [shows])
 
-  const handleShowClick = (imdbId: string) => {
-    setExpandedShowId(expandedShowId === imdbId ? null : imdbId)
+  // Aggressive preload images for all current shows
+  useEffect(() => {
+    if (shows.length > 0) {
+      // First batch - highest priority
+      const firstBatch = shows.slice(0, 4)
+      console.log(`🎬 [NewSeasonsList] Highest-priority preloading for ${firstBatch.length} immediate shows`)
+      preloadShowImagesOptimized(firstBatch, 'high').catch(error => {
+        console.warn('🎬 [NewSeasonsList] Failed to preload immediate images:', error)
+      })
+
+      // Second batch - high priority
+      if (shows.length > 4) {
+        const secondBatch = shows.slice(4, 12)
+        console.log(`🎬 [NewSeasonsList] High-priority preloading for ${secondBatch.length} near-visible shows`)
+        setTimeout(() => {
+          preloadShowImagesOptimized(secondBatch, 'high').catch(error => {
+            console.warn('🎬 [NewSeasonsList] Failed to preload near-visible images:', error)
+          })
+        }, 100)
+      }
+
+      // Remaining shows - medium priority
+      if (shows.length > 12) {
+        const remainingShows = shows.slice(12)
+        console.log(`🎬 [NewSeasonsList] Medium-priority preloading for ${remainingShows.length} remaining shows`)
+        setTimeout(() => {
+          preloadShowImagesOptimized(remainingShows, 'low').catch(error => {
+            console.warn('🎬 [NewSeasonsList] Failed to preload remaining images:', error)
+          })
+        }, 200)
+      }
+    }
+  }, [shows])
+
+  // Aggressively preload images for upcoming shows
+  useEffect(() => {
+    if (preloadedShows.length > 0) {
+      console.log(`🎬 [NewSeasonsList] Aggressive background preloading for ${preloadedShows.length} upcoming shows`)
+      setTimeout(() => {
+        preloadShowImagesOptimized(preloadedShows, 'low').catch(error => {
+          console.warn('🎬 [NewSeasonsList] Failed to preload upcoming images:', error)
+        })
+      }, 300)
+    }
+  }, [preloadedShows])
+
+  // Set up intersection observer for infinite scrolling trigger
+  useEffect(() => {
+    if (!onNearEnd || !hasMore) return
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            console.log('🎬 [NewSeasonsList] Near end of list, triggering preload')
+            onNearEnd?.()
+          }
+        })
+      },
+      {
+        rootMargin: '600px' // Trigger when 600px away from the end for earlier preloading
+      }
+    )
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [onNearEnd, hasMore])
+
+  // Observe the last few items to trigger near-end callback
+  useEffect(() => {
+    if (!observerRef.current || shows.length < 3) return
+
+    const lastItems = listRef.current?.querySelectorAll('.new-season-card-item')
+    if (lastItems && lastItems.length >= 3) {
+      // Observe the 3rd from last item
+      const targetItem = lastItems[lastItems.length - 3]
+      if (targetItem) {
+        observerRef.current.observe(targetItem)
+      }
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [shows.length])
+
+  const handleAction = (actedShow: ShowWithGenres, _status: ShowStatus) => {
+    setDisplayedShows(prev => prev.filter(show => show.imdb_id !== actedShow.imdb_id))
   }
 
   if (loading) {
     return (
-      <div className={`${className}`}>
+      <div className={className}>
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="glass-card p-6 flex items-center gap-4">
-              <div className="w-[30px] h-[45px] skeleton"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 skeleton w-3/4"></div>
-                <div className="h-3 skeleton w-1/2"></div>
-                <div className="h-3 skeleton w-1/4"></div>
+            <div
+              key={index}
+              className="show-card-modern relative flex gap-3 lg:gap-4 p-3 lg:p-4 animate-pulse min-h-[240px]"
+            >
+              <div className="h-[180px] w-[120px] rounded-3xl bg-white/5 sm:h-[210px] sm:w-[140px] lg:h-[240px] lg:w-[160px]" />
+              <div className="flex-1 space-y-3 py-2">
+                <div className="h-6 w-3/4 rounded bg-white/10" />
+                <div className="h-4 w-2/3 rounded bg-white/5" />
+                <div className="h-3 w-full rounded bg-white/5" />
+                <div className="h-3 w-11/12 rounded bg-white/5" />
+                <div className="mt-6 flex gap-3">
+                  <div className="h-9 w-24 rounded-full bg-white/5" />
+                  <div className="h-9 w-20 rounded-full bg-white/5" />
+                </div>
               </div>
             </div>
           ))}
@@ -53,8 +201,8 @@ export default function NewSeasonsList({
 
   if (error) {
     return (
-      <div className={`${className}`}>
-        <div className="glass-card p-8 text-center">
+      <div className={className}>
+        <div className="show-card-modern p-8 text-center">
           <div className="text-red-400 mb-4">
             <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -77,8 +225,8 @@ export default function NewSeasonsList({
 
   if (displayedShows.length === 0) {
     return (
-      <div className={`${className}`}>
-        <div className="glass-card p-8 text-center">
+      <div className={className}>
+        <div className="show-card-modern p-8 text-center">
           <div className="text-gray-400 mb-4">
             <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 011 1v1a1 1 0 01-1 1h-1v13a2 2 0 01-2 2H6a2 2 0 01-2-2V7H3a1 1 0 01-1-1V5a1 1 0 011-1h4zM9 7v11h6V7H9z" />
@@ -94,181 +242,59 @@ export default function NewSeasonsList({
   }
 
   return (
-    <div className={`${className}`}>
+    <div className={className} ref={listRef}>
       <div className="space-y-4">
         {displayedShows.map((show, index) => {
-          const posterUrl = getPosterUrl(show)
-          const posterThumb = (show as any).poster_thumb_url as string | undefined
           const { seasonText, airDate, isUpcoming } = formatSeasonInfo(show)
 
-          const isExpanded = expandedShowId === show.imdb_id
+          const seasonBadgeClasses = isUpcoming
+            ? 'bg-blue-500/20 text-blue-200 border border-blue-400/30'
+            : 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'
+
+          const statusLabel = isUpcoming ? 'UPCOMING' : 'RECENTLY RELEASED'
+          const airDateLabel = airDate ? `${isUpcoming ? 'Arrives' : 'Arrived'} ${airDate}` : ''
+          const timingLabel = getRelativeTimingLabel(show, isUpcoming)
+
+          const extraContent = (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 flex flex-col gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span className={`inline-flex items-center rounded-lg px-3 py-1 text-[0.62rem] sm:text-xs font-semibold tracking-[0.24em] uppercase ${seasonBadgeClasses}`}>
+                    {seasonText.toUpperCase()}
+                  </span>
+                  {airDateLabel && (
+                    <span className="text-white/80 text-[0.62rem] sm:text-xs tracking-[0.22em] uppercase">
+                      {airDateLabel.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[0.6rem] sm:text-[0.7rem] font-semibold uppercase tracking-[0.24em] ${
+                    isUpcoming ? 'bg-blue-500/15 text-blue-200 border border-blue-400/30' : 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'
+                  }`}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+              {timingLabel && (
+                <div className="text-[0.62rem] sm:text-xs tracking-[0.2em] uppercase text-white/70">
+                  {timingLabel.toUpperCase()}
+                </div>
+              )}
+            </div>
+          )
 
           return (
-            <div
-              key={show.imdb_id}
-              className={`glass-card relative group cursor-pointer transition-all duration-500 ease-out ${
-                isExpanded
-                  ? 'p-0 ring-2 ring-blue-500/50 shadow-2xl shadow-blue-500/20'
-                  : 'p-6 hover:scale-[1.02] hover:shadow-xl'
-              }`}
-              onClick={() => handleShowClick(show.imdb_id)}
-            >
-              {/* Compact View */}
-              <div className={`transition-all duration-500 ease-out ${isExpanded ? 'p-6 pb-4' : ''}`}>
-                <div className="flex items-center sm:gap-6 gap-4 flex-wrap">
-                  {/* Small Poster with optimized loading */}
-                  <div className={`flex-shrink-0 relative bg-gray-800 rounded-lg overflow-hidden transition-all duration-500 ease-out ${
-                    isExpanded ? 'w-[60px] h-[90px]' : 'w-[40px] h-[60px]'
-                  }`}>
-                    {posterUrl ? (
-                      <Image
-                        src={posterThumb || posterUrl}
-                        alt={show.name}
-                        fill
-                        className="object-cover crisp-image"
-                        sizes={isExpanded ? "60px" : "40px"}
-                        quality={75}
-                        priority={index < 5}
-                        placeholder={posterThumb ? 'blur' : 'empty'}
-                        blurDataURL={posterThumb}
-                        loading={index < 5 ? 'eager' : 'lazy'}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                        <div className="text-gray-400 text-sm">📺</div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Show Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-bold mb-2 leading-tight text-white transition-all duration-500 ease-out ${
-                      isExpanded ? 'text-2xl' : 'text-xl truncate'
-                    }`}>
-                      {show.name}
-                    </h3>
-                    <div className="flex items-center gap-3 text-sm mb-2">
-                      <span className={`font-semibold px-2 py-1 rounded-lg ${
-                        isUpcoming
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                          : 'bg-green-500/20 text-green-300 border border-green-500/30'
-                      }`}>
-                        {seasonText}
-                      </span>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-gray-300">{airDate}</span>
-                    </div>
-                    <div className={`text-xs font-medium ${
-                      isUpcoming ? 'text-blue-400' : 'text-green-400'
-                    }`}>
-                      {isUpcoming ? 'Upcoming' : 'Recently Released'}
-                    </div>
-                  </div>
-
-                  {/* Expand/Collapse Icon and IMDb Link */}
-                  <div className="flex-shrink-0 flex items-center gap-3 w-full sm:w-auto justify-end mt-3 sm:mt-0">
-                    {/* IMDb Link */}
-                    <a
-                      href={`https://www.imdb.com/title/${show.imdb_id}/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="glass border border-white/20 hover:bg-white/15 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold group inline-flex items-center gap-2 transition-all duration-300 hover:scale-105 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span>IMDB</span>
-                      <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    
-                    {/* Expand/Collapse Icon */}
-                    <div className="text-white/60 hover:text-white transition-colors">
-                      <svg
-                        className={`w-6 h-6 transition-transform duration-500 ease-out ${isExpanded ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Details - Smooth Height Transition */}
-              <div className={`overflow-hidden transition-all duration-500 ease-out ${
-                isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
-              }`}>
-                <div className="px-6 pb-6">
-                  {/* Divider */}
-                  <div className="border-t border-white/20 mb-6"></div>
-                  
-                  {/* Additional Show Details */}
-                  <div className="space-y-4">
-                    {/* Description */}
-                    {show.overview && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">Overview</h4>
-                        <p className="text-gray-200 text-sm leading-relaxed">
-                          {show.overview}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Genres */}
-                    {show.genre_names && show.genre_names.length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">Genres</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {show.genre_names.map((genre, genreIndex) => (
-                            <span key={genreIndex} className="px-3 py-1 rounded-xl bg-white/20 text-white text-xs font-medium">
-                              {genre}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Creators and Cast */}
-                    {((show.creators && show.creators.length > 0) || (show.main_cast && show.main_cast.length > 0)) && (
-                      <div className="space-y-2">
-                        {show.creators && show.creators.length > 0 && (
-                          <div>
-                            <span className="font-semibold text-white text-sm">Creators: </span>
-                            <span className="text-gray-300 text-sm">
-                              {show.creators.join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        {show.main_cast && show.main_cast.length > 0 && (
-                          <div>
-                            <span className="font-semibold text-white text-sm">Cast: </span>
-                            <span className="text-gray-300 text-sm">
-                              {show.main_cast.slice(0, 4).join(', ')}{show.main_cast.length > 4 ? '...' : ''}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Rating */}
-                    {show.our_score && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-white mb-2">Rating</h4>
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          <span className="font-bold text-white text-lg">
-                            {show.our_score.toFixed(1)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div key={show.imdb_id} className="new-season-card-item">
+              <ShowCard
+                show={show}
+                onAction={handleAction}
+                showActions={false}
+                showDescription={false}
+                compact
+                priority={index < 4}
+                extraContent={extraContent}
+              />
             </div>
           )
         })}

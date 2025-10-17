@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 
@@ -16,6 +16,8 @@ interface NavigationContextType {
   refreshCounters: () => Promise<void>
   refreshTrigger: number
   discoverResetTrigger: number
+  sectionFlashes: Partial<Record<NavigationSection, boolean>>
+  triggerSectionFlash: (section: NavigationSection) => void
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined)
@@ -28,6 +30,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [newSeasonsCount, setNewSeasonsCount] = useState(0)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [discoverResetTrigger, setDiscoverResetTrigger] = useState(0)
+  const [sectionFlashes, setSectionFlashes] = useState<Partial<Record<NavigationSection, boolean>>>({})
+  const flashTimeouts = useRef<Partial<Record<NavigationSection, ReturnType<typeof setTimeout>>>>({})
   const { user } = useAuth()
 
   const handleSetActiveSection = useCallback((section: NavigationSection) => {
@@ -100,9 +104,36 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  const triggerSectionFlash = useCallback((section: NavigationSection) => {
+    setSectionFlashes(prev => ({ ...prev, [section]: true }))
+
+    if (flashTimeouts.current[section]) {
+      clearTimeout(flashTimeouts.current[section]!)
+    }
+
+    flashTimeouts.current[section] = setTimeout(() => {
+      setSectionFlashes(prev => {
+        const next = { ...prev }
+        delete next[section]
+        return next
+      })
+      delete flashTimeouts.current[section]
+    }, 1400)
+  }, [])
+
   useEffect(() => {
     refreshCounters()
   }, [user, refreshCounters])
+
+  useEffect(() => {
+    return () => {
+      Object.values(flashTimeouts.current).forEach(timeoutId => {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+      })
+    }
+  }, [])
 
   return (
     <NavigationContext.Provider value={{
@@ -114,7 +145,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       newSeasonsCount,
       refreshCounters,
       refreshTrigger,
-      discoverResetTrigger
+      discoverResetTrigger,
+      sectionFlashes,
+      triggerSectionFlash
     }}>
       {children}
     </NavigationContext.Provider>

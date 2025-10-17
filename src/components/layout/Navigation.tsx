@@ -2,57 +2,18 @@
 
 import { useNavigation, NavigationSection } from '@/contexts/NavigationContext'
 import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface NavigationItem {
   id: NavigationSection
   label: string
-  count?: number
   icon: string
   gradient: string
 }
 
-const CountBadge = ({ value, isActive }: { value?: number; isActive: boolean }) => {
-  const [animate, setAnimate] = useState(false)
-  const prev = useRef(value)
-
-  useEffect(() => {
-    if (value !== prev.current) {
-      setAnimate(true)
-      const t = setTimeout(() => setAnimate(false), 650)
-      prev.current = value
-      return () => clearTimeout(t)
-    }
-  }, [value])
-
-  const display =
-    typeof value === 'number' && value >= 0
-      ? new Intl.NumberFormat('en-US').format(value)
-      : '0'
-
-  return (
-    <div
-      className={`
-        relative px-2 py-1 rounded-xl text-xs font-bold transition-all duration-300
-        ${isActive 
-          ? 'bg-white/20 text-white' 
-          : 'bg-white/10 text-white/70'
-        }
-        ${animate ? 'animate-count-pop' : ''}
-      `}
-      style={{ fontVariantNumeric: 'tabular-nums' }}
-      aria-live="polite"
-    >
-      {display}
-      {animate && (
-        <div className="absolute inset-0 rounded-xl bg-white/30 animate-ping"></div>
-      )}
-    </div>
-  )
-}
 
 export default function Navigation() {
-  const { activeSection, setActiveSection, watchlistCount, ratedCount, discoverCount, newSeasonsCount } = useNavigation()
+  const { activeSection, setActiveSection, sectionFlashes } = useNavigation()
   const [isScrolled, setIsScrolled] = useState(false)
 
   useEffect(() => {
@@ -65,31 +26,27 @@ export default function Navigation() {
   }, [])
 
   const navigationItems: NavigationItem[] = [
-    { 
-      id: 'discover', 
-      label: 'Discovery', 
-      count: discoverCount,
+    {
+      id: 'discover',
+      label: 'Discovery',
       icon: '/discovery.svg',
       gradient: 'from-blue-500 to-purple-600'
     },
-    { 
-      id: 'new-seasons', 
-      label: 'New Seasons', 
-      count: newSeasonsCount,
+    {
+      id: 'new-seasons',
+      label: 'New Seasons',
       icon: '/new seasons.svg',
       gradient: 'from-green-500 to-teal-600'
     },
-    { 
-      id: 'watchlist', 
-      label: 'Watchlist', 
-      count: watchlistCount,
+    {
+      id: 'watchlist',
+      label: 'Watchlist',
       icon: '/watchlist.svg',
       gradient: 'from-yellow-500 to-orange-600'
     },
-    { 
-      id: 'rated', 
-      label: 'Rated', 
-      count: ratedCount,
+    {
+      id: 'rated',
+      label: 'Rated',
       icon: '/rated.svg',
       gradient: 'from-pink-500 to-red-600'
     },
@@ -97,13 +54,14 @@ export default function Navigation() {
 
   const renderDesktopButton = (item: NavigationItem) => {
     const isActive = activeSection === item.id
+    const isFlashing = sectionFlashes?.[item.id]
     
     return (
       <button
         key={item.id}
         onClick={() => setActiveSection(item.id)}
         className={`
-          group relative overflow-hidden rounded-3xl px-4 py-3 transition-all duration-300 transform
+          group relative ${isFlashing ? 'overflow-visible' : 'overflow-hidden'} rounded-3xl px-4 py-3 transition-all duration-300 transform
           ${isActive
             ? `bg-gradient-to-br ${item.gradient} shadow-lg scale-105`
             : `${isScrolled ? 'bg-gray-900/90 backdrop-blur-md border border-white/20' : 'bg-white/10 border border-white/20'} hover:bg-white/15 hover:scale-105`
@@ -117,7 +75,7 @@ export default function Navigation() {
         </div>
         
         {/* Content */}
-        <div className="relative z-10 flex items-center justify-between">
+        <div className="relative z-10 flex items-center justify-start">
           {/* Left side: Icon and Label */}
           <div className="flex items-center space-x-4">
             <div className={`
@@ -152,8 +110,6 @@ export default function Navigation() {
             </div>
           </div>
           
-          {/* Right side: Count Badge only */}
-          <CountBadge value={item.count} isActive={isActive} />
         </div>
         
         {/* Hover effect overlay */}
@@ -166,6 +122,9 @@ export default function Navigation() {
         {/* Active indicator */}
         {isActive && (
           <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-white/20 to-transparent animate-pulse"></div>
+        )}
+        {isFlashing && (
+          <span className="nav-flash-badge nav-flash-badge--desktop">+1</span>
         )}
       </button>
     )

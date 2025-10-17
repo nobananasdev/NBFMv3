@@ -131,35 +131,59 @@ export async function fetchShows(options: {
       console.log('🔍 [fetchShows] Will filter user shows in memory due to large list')
     }
     
-    // Build sorting
+    // Determine if we need in-memory sorting
+    // CRITICAL: Always use in-memory sorting for rating-based sorts to maintain proper order across pagination
+    // Without this, each paginated request returns shows in arbitrary order after the first batch
+    const hasActiveFilters = (options.genreIds && options.genreIds.length > 0) ||
+                            (options.streamerIds && options.streamerIds.length > 0)
+    const needsInMemorySort = (options.sortBy === 'rating' || options.sortBy === 'by_rating' || options.sortBy === 'best_rated')
+    
+    // Build sorting - use a simple sort if we'll sort in memory later
     let orderParam = ''
-    switch (options.sortBy) {
-      case 'latest':
-        orderParam = '&order=first_air_date.desc.nullslast'
-        break
-      case 'rating':
-      case 'by_rating':
-        // Use our_score first, then imdb_rating as fallback, then vote_average (tmdb rating)
-        orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,vote_average.desc.nullslast'
-        break
-      case 'recently_added':
-        orderParam = '&order=created_at.desc'
-        break
-      case 'best_rated':
-        // Only use our_score for best_rated
-        orderParam = '&order=our_score.desc.nullslast'
-        break
-      default:
-        orderParam = '&order=first_air_date.desc.nullslast'
-        break
+    if (needsInMemorySort) {
+      // Use a neutral sort that won't interfere with our in-memory rating sort
+      orderParam = '&order=id.asc'
+    } else {
+      switch (options.sortBy) {
+        case 'latest':
+          orderParam = '&order=first_air_date.desc.nullslast'
+          break
+        case 'rating':
+        case 'by_rating':
+          // Use our_score first, then imdb_rating as fallback, then vote_average (tmdb rating)
+          orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,vote_average.desc.nullslast'
+          break
+        case 'recently_added':
+          orderParam = '&order=created_at.desc'
+          break
+        case 'best_rated':
+          // Prefer our_score, then fall back to IMDb/TMDB ratings
+          orderParam = '&order=our_score.desc.nullslast,imdb_rating.desc.nullslast,vote_average.desc.nullslast'
+          break
+        default:
+          orderParam = '&order=first_air_date.desc.nullslast'
+          break
+      }
     }
     
     // Calculate fetch limit - need to fetch more when filtering to ensure we get enough results
     const baseLimit = options.limit || 20
     let fetchLimit = baseLimit
     
-    // Increase fetch limit when we have filters that will be applied in memory
-    if (options.streamerIds && options.streamerIds.length > 0) {
+    // CRITICAL FIX: When we need in-memory sorting (rating sort),
+    // fetch a large batch to maintain proper sort order across pagination
+    if (needsInMemorySort) {
+      // Fetch a reasonable large batch (not all shows to avoid timeout)
+      // This ensures the first several hundred shows are in correct order
+      // When filters are active, fetch even more to ensure enough results after filtering
+      if (hasActiveFilters) {
+        fetchLimit = 2000 // Fetch 2000 shows when filters are active for proper sorting
+        console.log('🔍 [fetchShows] Rating sort with filters detected - fetching 2000 shows for proper in-memory sorting')
+      } else {
+        fetchLimit = 1000 // Fetch 1000 shows for proper sorting without filters
+        console.log('🔍 [fetchShows] Rating sort detected - fetching 1000 shows for proper in-memory sorting')
+      }
+    } else if (options.streamerIds && options.streamerIds.length > 0) {
       // Fetch 10x more to ensure we find enough matches in one request
       fetchLimit = Math.max(baseLimit * 10, 200)
     } else if (options.genreIds && options.genreIds.length > 0) {
@@ -170,7 +194,8 @@ export async function fetchShows(options: {
     }
     
     // Add offset to query for proper pagination
-    const offsetParam = (options.offset && options.offset > 0) ? `&offset=${options.offset}` : ''
+    // CRITICAL: Don't use offset when doing in-memory sorting - we need all data
+    const offsetParam = (options.offset && options.offset > 0 && !needsInMemorySort) ? `&offset=${options.offset}` : ''
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
     const url = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,streamers,main_cast,creators&limit=${fetchLimit}${offsetParam}${queryString}${orderParam}`
     
@@ -205,6 +230,7 @@ export async function fetchShows(options: {
     
     // Step 3: Apply remaining filters in memory
     let filteredShows = shows || []
+    const originalShowsArray = Array.isArray(shows) ? shows : []
     console.log(`🔍 [fetchShows] Initial shows fetched: ${filteredShows.length}`)
     
     // Filter out user shows if needed
@@ -262,16 +288,75 @@ export async function fetchShows(options: {
       console.log(`🔍 [fetchShows] After streaming filter: ${beforeCount} -> ${filteredShows.length}`)
     }
     
-    // Step 4: Apply final limit (since we already used offset in query)
-    const totalFiltered = filteredShows.length
-    const requestedLimit = options.limit || 20
-    
-    // Only slice if we got more than requested (due to filtering buffer)
-    if (filteredShows.length > requestedLimit) {
-      filteredShows = filteredShows.slice(0, requestedLimit)
+    // Apply in-memory sorting if needed (when filters are active with rating sort)
+    if (needsInMemorySort) {
+      console.log(`🔍 [fetchShows] Applying in-memory rating sort for ${filteredShows.length} filtered shows`)
+      filteredShows = filteredShows.sort((a: any, b: any) => {
+        if (options.sortBy === 'best_rated') {
+          const scoreA = typeof a.our_score === 'number' ? a.our_score : (a.our_score || 0)
+          const scoreB = typeof b.our_score === 'number' ? b.our_score : (b.our_score || 0)
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA
+          }
+          const imdbA = typeof a.imdb_rating === 'number' ? a.imdb_rating : (a.imdb_rating || 0)
+          const imdbB = typeof b.imdb_rating === 'number' ? b.imdb_rating : (b.imdb_rating || 0)
+          if (imdbB !== imdbA) {
+            return imdbB - imdbA
+          }
+          const voteA = typeof a.vote_average === 'number' ? a.vote_average : (a.vote_average || 0)
+          const voteB = typeof b.vote_average === 'number' ? b.vote_average : (b.vote_average || 0)
+          return voteB - voteA
+        }
+
+        const ratingA = a.our_score || a.imdb_rating || a.vote_average || 0
+        const ratingB = b.our_score || b.imdb_rating || b.vote_average || 0
+        return ratingB - ratingA
+      })
     }
     
-    console.log(`🔍 [fetchShows] Final result: ${filteredShows.length} shows (requested: ${requestedLimit})`)
+    // Step 4: Apply pagination AFTER sorting (critical for maintaining sort order)
+    const totalFiltered = filteredShows.length
+    const requestedLimit = options.limit || 20
+    const requestedOffset = options.offset || 0
+    
+    // When doing in-memory sorting, apply offset here instead of in the query
+    const startIndex = needsInMemorySort ? requestedOffset : 0
+    const endIndex = startIndex + requestedLimit
+    
+    const limitedShows = filteredShows.slice(startIndex, endIndex)
+    
+    console.log(`🔍 [fetchShows] Pagination: total=${totalFiltered}, offset=${startIndex}, limit=${requestedLimit}, returning=${limitedShows.length}`)
+    
+    // Calculate consumed shows and hasMore
+    let consumedFromRaw = rawFetched
+    
+    if (needsInMemorySort) {
+      // For in-memory sorting, we consumed all shows and pagination is done in-memory
+      consumedFromRaw = totalFiltered
+    } else if (limitedShows.length > 0 && originalShowsArray.length > 0) {
+      const indexMap = new Map<string, number>()
+      for (let i = 0; i < originalShowsArray.length; i++) {
+        const imdbId = originalShowsArray[i]?.imdb_id
+        if (imdbId && !indexMap.has(imdbId)) {
+          indexMap.set(imdbId, i)
+        }
+      }
+
+      const lastShow = limitedShows[limitedShows.length - 1]
+      const originalIndex = lastShow?.imdb_id ? indexMap.get(lastShow.imdb_id) : undefined
+      if (typeof originalIndex === 'number') {
+        consumedFromRaw = originalIndex + 1
+      }
+    }
+
+    filteredShows = limitedShows
+    
+    // Determine if there are more results
+    const hasBufferedResults = needsInMemorySort
+      ? (endIndex < totalFiltered) // For in-memory sort, check if we have more in the sorted array
+      : (totalFiltered > filteredShows.length) // For normal pagination, check if we got more than we're showing
+    
+    console.log(`🔍 [fetchShows] Final result: ${filteredShows.length} shows (requested: ${requestedLimit}, consumed: ${consumedFromRaw})`)
     
     // Clean up the shows data with proper fallbacks
     const cleanedShows = filteredShows.map((show: any) => ({
@@ -312,10 +397,22 @@ export async function fetchShows(options: {
     const showsWithGenres = await addGenreNames(cleanedShows)
 
     // Return shows with metadata for pagination
-    // Use rawFetched and fetchLimit to determine if there might be more data on the server
     const requestedAmount = options.limit || 20
-    const hasMoreData = rawFetched === fetchLimit
-    const nextOffset = (options.offset || 0) + rawFetched
+    
+    // Calculate hasMore and nextOffset based on whether we're doing in-memory sorting
+    let hasMoreData: boolean
+    let nextOffset: number
+    
+    if (needsInMemorySort) {
+      // For in-memory sorting, hasMore is based on whether we have more items in the sorted array
+      hasMoreData = endIndex < totalFiltered
+      nextOffset = endIndex // Next offset is the end of current slice
+      console.log(`🔍 [fetchShows] In-memory sort pagination: hasMore=${hasMoreData}, nextOffset=${nextOffset}, total=${totalFiltered}`)
+    } else {
+      // For normal pagination, use the original logic
+      hasMoreData = hasBufferedResults || rawFetched === fetchLimit
+      nextOffset = (options.offset || 0) + consumedFromRaw
+    }
 
     return {
       shows: showsWithGenres,
@@ -363,40 +460,40 @@ export async function fetchUserShows(
     }
 
     console.log(`🔍 [fetchUserShows] Applying sorting: ${options?.sortBy}`)
-    switch (options?.sortBy) {
-      case 'recently_added':
-        // Sort by when the status was last updated, not when first created
-        query = query.order('updated_at', { ascending: false })
-        break
-      case 'best_rated':
-        // 🐛 FIX: This should not sort by updated_at, we'll handle rating sorting in memory
-        query = query.order('updated_at', { ascending: false })
-        break
-      case 'by_rating':
-        // For grouped by rating, we'll sort by status first, then by updated_at
-        // Also fetch more data since grouping needs all shows
-        query = query.order('status', { ascending: false }).order('updated_at', { ascending: false })
-        console.log('🔍 [fetchUserShows] by_rating sorting applied, will fetch more data')
-        break
-      case 'latest':
-        // Sort by when the show was added to user's list
-        query = query.order('created_at', { ascending: false })
-        break
-      case 'rating':
-        // We'll handle rating sorting in memory since it's based on show data
-        query = query.order('updated_at', { ascending: false })
-        break
-      default:
-        query = query.order('updated_at', { ascending: false })
-        break
+    
+    // For rating-based sorts, we need to fetch ALL data first, then sort in memory
+    // This ensures pagination maintains the correct rating order
+    const needsInMemorySort = options?.sortBy === 'best_rated' || options?.sortBy === 'rating' || options?.sortBy === 'by_rating'
+    
+    if (needsInMemorySort) {
+      // Don't apply limit/offset yet - we'll do it after sorting
+      console.log('🔍 [fetchUserShows] Rating-based sort detected, will fetch all data and sort in memory')
+      query = query.order('updated_at', { ascending: false })
+    } else {
+      // For non-rating sorts, apply normal database ordering
+      switch (options?.sortBy) {
+        case 'recently_added':
+          query = query.order('updated_at', { ascending: false })
+          break
+        case 'latest':
+          query = query.order('created_at', { ascending: false })
+          break
+        default:
+          query = query.order('updated_at', { ascending: false })
+          break
+      }
     }
 
-    if (options?.limit) {
-      query = query.limit(options.limit)
-    }
+    // Only apply limit/offset for non-rating sorts
+    // For rating sorts, we'll apply pagination after in-memory sorting
+    if (!needsInMemorySort) {
+      if (options?.limit) {
+        query = query.limit(options.limit)
+      }
 
-    if (options?.offset) {
-      query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 10) - 1)
+      }
     }
 
     const { data: userShows, error: userShowsError } = await query
@@ -446,23 +543,44 @@ export async function fetchUserShows(
     
     console.log(`🔍 [fetchUserShows] Retrieved ${shows.length} shows before in-memory sorting`)
     
-    // 🐛 FIX: Apply in-memory sorting for rating-based sorts
-    if (options?.sortBy === 'best_rated' || options?.sortBy === 'rating' || options?.sortBy === 'by_rating') {
+    // 🐛 FIX: Apply in-memory sorting for rating-based sorts, then paginate
+    if (needsInMemorySort) {
+      console.log(`🔍 [fetchUserShows] Applying in-memory rating sort for ${shows.length} shows`)
+      
       shows = shows.sort((a, b) => {
-        // For "best_rated", use ONLY our_score to match what's displayed
-        const ratingA = options?.sortBy === 'best_rated'
-          ? (a.our_score || 0)
-          : options?.sortBy === 'by_rating'
+        if (options?.sortBy === 'best_rated') {
+          const scoreA = typeof a.our_score === 'number' ? a.our_score : (a.our_score || 0)
+          const scoreB = typeof b.our_score === 'number' ? b.our_score : (b.our_score || 0)
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA
+          }
+          const imdbA = typeof a.imdb_rating === 'number' ? a.imdb_rating : (a.imdb_rating || 0)
+          const imdbB = typeof b.imdb_rating === 'number' ? b.imdb_rating : (b.imdb_rating || 0)
+          if (imdbB !== imdbA) {
+            return imdbB - imdbA
+          }
+          const voteA = typeof a.vote_average === 'number' ? a.vote_average : (a.vote_average || 0)
+          const voteB = typeof b.vote_average === 'number' ? b.vote_average : (b.vote_average || 0)
+          return voteB - voteA
+        }
+
+        const ratingA = options?.sortBy === 'by_rating'
           ? (a.our_score || a.imdb_rating || a.vote_average || 0)
           : (a.imdb_rating || a.vote_average || a.our_score || 0)
-        const ratingB = options?.sortBy === 'best_rated'
-          ? (b.our_score || 0)
-          : options?.sortBy === 'by_rating'
+        const ratingB = options?.sortBy === 'by_rating'
           ? (b.our_score || b.imdb_rating || b.vote_average || 0)
           : (b.imdb_rating || b.vote_average || b.our_score || 0)
         
         return ratingB - ratingA
       })
+      
+      // Now apply pagination after sorting
+      const offset = options?.offset || 0
+      const limit = options?.limit || 20
+      const totalShows = shows.length
+      shows = shows.slice(offset, offset + limit)
+      
+      console.log(`🔍 [fetchUserShows] After pagination: showing ${shows.length} of ${totalShows} total (offset: ${offset}, limit: ${limit})`)
     }
     
     const showsWithGenres = await addGenreNames(shows)
@@ -559,10 +677,19 @@ function applySortingToShows(shows: any[], sortBy: SortOption): any[] {
     
     case 'best_rated':
       return shows.sort((a, b) => {
-        // For "best_rated", use ONLY our_score to match what's displayed
-        const ratingA = a.our_score || 0
-        const ratingB = b.our_score || 0
-        return ratingB - ratingA
+        const scoreA = typeof a.our_score === 'number' ? a.our_score : (a.our_score || 0)
+        const scoreB = typeof b.our_score === 'number' ? b.our_score : (b.our_score || 0)
+        if (scoreB !== scoreA) {
+          return scoreB - scoreA
+        }
+        const imdbA = typeof (a as any).imdb_rating === 'number' ? (a as any).imdb_rating : ((a as any).imdb_rating || 0)
+        const imdbB = typeof (b as any).imdb_rating === 'number' ? (b as any).imdb_rating : ((b as any).imdb_rating || 0)
+        if (imdbB !== imdbA) {
+          return imdbB - imdbA
+        }
+        const voteA = typeof (a as any).vote_average === 'number' ? (a as any).vote_average : ((a as any).vote_average || 0)
+        const voteB = typeof (b as any).vote_average === 'number' ? (b as any).vote_average : ((b as any).vote_average || 0)
+        return voteB - voteA
       })
     
     case 'by_rating':

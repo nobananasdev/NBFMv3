@@ -25,7 +25,6 @@ interface FilterContextType {
   toggleFilter: () => void
   closeFilter: () => void
   setSelectedGenres: (genres: number[]) => void
-  setYearRange: (range: [number, number]) => void
   setSelectedStreamers: (streamers: number[]) => void
   clearFilters: () => void
   setFilterOptions: (options: FilterOptions) => void
@@ -54,10 +53,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setFilters(prev => ({ ...prev, selectedGenres: genres }))
   }
 
-  const setYearRange = (range: [number, number]) => {
-    setFilters(prev => ({ ...prev, yearRange: range }))
-  }
-
   const setSelectedStreamers = (streamers: number[]) => {
     setFilters(prev => ({ ...prev, selectedStreamers: streamers }))
   }
@@ -84,11 +79,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
   const hasActiveFilters = 
     filters.selectedGenres.length > 0 ||
-    filters.selectedStreamers.length > 0 ||
-    (filterOptions ? (
-      filters.yearRange[0] !== filterOptions.yearRange[0] ||
-      filters.yearRange[1] !== filterOptions.yearRange[1]
-    ) : false)
+    filters.selectedStreamers.length > 0
 
   return (
     <FilterContext.Provider
@@ -100,7 +91,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         toggleFilter,
         closeFilter,
         setSelectedGenres,
-        setYearRange,
         setSelectedStreamers,
         clearFilters,
         setFilterOptions: setFilterOptionsAndUpdateDefaults,

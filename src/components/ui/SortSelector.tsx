@@ -16,9 +16,20 @@ interface SortSelectorProps {
   mobileEqualWidth?: boolean
   buttonClassName?: string
   theme?: 'discover' | 'new-seasons' | 'watchlist' | 'rated'
+  variant?: 'pill' | 'toggle'
 }
 
-export default function SortSelector({ value, onChange, options, className = '', showFilter = false, mobileEqualWidth = true, buttonClassName = '', theme }: SortSelectorProps) {
+export default function SortSelector({
+  value,
+  onChange,
+  options,
+  className = '',
+  showFilter = false,
+  mobileEqualWidth = true,
+  buttonClassName = '',
+  theme,
+  variant = 'pill'
+}: SortSelectorProps) {
   // Always call useContext hook, but only use it if showFilter is true
   const filterContext = useContext(FilterContext)
   const toggleFilter = showFilter ? (filterContext?.toggleFilter || (() => {})) : (() => {})
@@ -77,10 +88,25 @@ export default function SortSelector({ value, onChange, options, className = '',
       {/* Sort options follow */}
       {options.map((option) => {
         const isActive = value === option.value
+
+        if (variant === 'toggle') {
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={`${mobileWidthClass} text-center sm:flex-none ${buttonClassName} sort-toggle ${isActive ? 'sort-toggle--active' : ''}`}
+            >
+              {option.label}
+            </button>
+          )
+        }
+
         const isHover = hovered === option.value
         return (
           <button
             key={option.value}
+            type="button"
             onClick={() => onChange(option.value)}
             className={`group relative overflow-hidden px-3 lg:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap border transition-all duration-300 ease-out hover:-translate-y-0.5 ${
               isActive || isHover

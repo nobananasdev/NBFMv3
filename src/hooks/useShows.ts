@@ -213,12 +213,14 @@ export function useShows({
             })
             
             // Also immediately start preloading the next batch in the background
+            // Use shorter delay for new_seasons view since cards load faster
+            const preloadDelay = view === 'new_seasons' ? 200 : 500
             setTimeout(() => {
               console.log('🔍 [useShows] Starting background preload for next batch')
               fetchShowsData(false, undefined, true).catch(error => {
                 console.warn('🔍 [useShows] Background preload failed:', error)
               })
-            }, 500) // Start preloading next batch after 500ms
+            }, preloadDelay)
           }
           
           // Update server offset for discover view
@@ -303,18 +305,31 @@ export function useShows({
   const fetchMore = useCallback(async () => {
     if (!hasMore || loading) return
 
-    // If we already preloaded next batch for discover, consume it without fetching
-    if (view === 'discover' && preloadedShows.length > 0) {
+    // If we already preloaded next batch, consume it without fetching
+    if (preloadedShows.length > 0) {
+      console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows for ${view}`)
       setShows(prev => dedupeByImdb([...prev, ...preloadedShows]))
       setPreloadedShows([])
-      if (preloadedNextOffset != null) {
-        setServerOffset(preloadedNextOffset)
-        setPreloadedNextOffset(null)
+      
+      if (view === 'discover') {
+        if (preloadedNextOffset != null) {
+          setServerOffset(preloadedNextOffset)
+          setPreloadedNextOffset(null)
+        }
+        if (preloadedHasMore != null) {
+          setHasMore(preloadedHasMore)
+          setPreloadedHasMore(null)
+        }
       }
-      if (preloadedHasMore != null) {
-        setHasMore(preloadedHasMore)
-        setPreloadedHasMore(null)
-      }
+      
+      // Immediately start preloading the next batch after consuming preloaded shows
+      setTimeout(() => {
+        console.log('🔍 [useShows] Starting next preload after consuming previous batch')
+        fetchShowsData(false, undefined, true).catch(error => {
+          console.warn('🔍 [useShows] Next batch preload failed:', error)
+        })
+      }, 100)
+      
       return
     }
 

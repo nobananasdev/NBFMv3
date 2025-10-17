@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useDiscoverShows, SortOption } from '@/hooks/useShows'
 import ShowsList from '@/components/shows/ShowsList'
-import SortSelector from '@/components/ui/SortSelector'
 import FilterSidebar from '@/components/ui/FilterSidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { FilterProvider, useFilter } from '@/contexts/FilterContext'
@@ -11,9 +10,9 @@ import { useNavigation } from '@/contexts/NavigationContext'
 import { fetchFilterOptions, searchShowsDatabase, fetchShowByImdbId, ShowWithGenres } from '@/lib/shows'
 import SearchPanel from '@/components/ui/SearchPanel'
 
-const DISCOVER_SORT_OPTIONS = [
-  { value: 'latest' as const, label: 'Latest Shows' },
-  { value: 'rating' as const, label: 'By Rating' }
+const DISCOVER_SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: 'rating', label: 'Top rated first' },
+  { value: 'latest', label: 'Newest first' }
 ]
 
 function DiscoverContent() {
@@ -32,14 +31,11 @@ function DiscoverContent() {
     isPreloading,
     preloadNext
   } = useDiscoverShows(20)
-  const { setFilterOptions, filters, isApplyingFilters, toggleFilter, hasActiveFilters } = useFilter()
+  const { setFilterOptions, isApplyingFilters, toggleFilter, hasActiveFilters, isFilterOpen, closeFilter } = useFilter()
   const observerRef = useRef<HTMLDivElement>(null)
   const preloadObserverRef = useRef<HTMLDivElement>(null)
 
-  // Search UI state
   const [isSearchPanelOpen, setIsSearchPanelOpen] = useState(false)
-
-  // Client-side search mode state
   const [isSearchActive, setIsSearchActive] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<ShowWithGenres[]>([])
@@ -49,135 +45,47 @@ function DiscoverContent() {
   const [searchOffset, setSearchOffset] = useState<number>(0)
   const [searchSortBy, setSearchSortBy] = useState<SortOption>('latest')
 
-  // Load filter options on mount
   useEffect(() => {
     const loadFilterOptions = async () => {
-      console.log('🔍 [DiscoverSection] Loading filter options...')
       const result = await fetchFilterOptions()
-      if (result.error) {
-        console.error('❌ [DiscoverSection] Filter options error:', result.error)
-      } else {
-        console.log('✅ [DiscoverSection] Filter options loaded:', {
-          genres: result.options.genres.length,
-          streamers: result.options.streamers.length,
-          yearRange: result.options.yearRange
-        })
+      if (!result.error) {
         setFilterOptions(result.options)
       }
     }
     loadFilterOptions()
-  }, []) // Remove setFilterOptions from dependency array to prevent infinite loop
+  }, [setFilterOptions])
 
-  // Debug info
-  console.log('🎬 DiscoverSection render:', {
-    shows: shows.length,
-    preloadedShows: preloadedShows.length,
-    loading,
-    isPreloading,
-    error: error?.message || error,
-    user: !!user,
-    isSearchActive,
-    searchResults: searchResults.length,
-    searchLoading,
-    searchError: searchError?.message || searchError
-  })
+  const handleSearchSortChange = useCallback(async (newSort: SortOption) => {
+    if (!isSearchActive || !searchQuery) return
 
-  // Preload trigger - starts loading next batch much earlier
-  const handlePreloadObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries
-      // Disable preloading during search mode
-      if (isSearchActive) return
-      if (target.isIntersecting && hasMore && !loading && !isPreloading) {
-        console.log('🔍 [DiscoverSection] Preload trigger activated')
-        preloadNext()
+    setSearchSortBy(newSort)
+    setSearchResults([])
+    setSearchError(null)
+    setSearchHasMore(false)
+    setSearchOffset(0)
+    setSearchLoading(true)
+
+    try {
+      const result = await searchShowsDatabase({
+        query: searchQuery,
+        limit: 20,
+        offset: 0,
+        excludeUserShows: false,
+        userId: user?.id,
+        sortBy: newSort === 'rating' ? 'by_rating' : newSort
+      })
+      if (result.error) {
+        setSearchError(result.error)
+      } else {
+        setSearchResults(result.shows)
+        setSearchHasMore(result.hasMore)
+        setSearchOffset(result.nextOffset ?? 0)
       }
-    },
-    [isSearchActive, hasMore, loading, isPreloading, preloadNext]
-  )
-
-  // Infinite scroll implementation - switches to search paging when active
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries
-      if (target.isIntersecting) {
-        if (isSearchActive) {
-          if (searchHasMore && !searchLoading) {
-            console.log('🔍 [DiscoverSection] Infinite scroll trigger (search) activated')
-            ;(async () => {
-              setSearchLoading(true)
-              try {
-                const result = await searchShowsDatabase({
-                  query: searchQuery,
-                  limit: 20,
-                  offset: searchOffset,
-                  // Do not exclude user's shows in full search to match quick search behavior
-                  excludeUserShows: false,
-                  userId: user?.id,
-                  sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
-                })
-                if (result.error) {
-                  setSearchError(result.error)
-                  setSearchHasMore(false)
-                } else {
-                  setSearchResults(prev => {
-                    const map = new Map(prev.map(s => [s.imdb_id, s]))
-                    for (const s of result.shows) {
-                      if (!map.has(s.imdb_id)) map.set(s.imdb_id, s)
-                    }
-                    return Array.from(map.values())
-                  })
-                  setSearchHasMore(result.hasMore)
-                  setSearchOffset(result.nextOffset ?? searchOffset)
-                }
-              } finally {
-                setSearchLoading(false)
-              }
-            })()
-          }
-        } else if (hasMore && !loading) {
-          console.log('🔍 [DiscoverSection] Infinite scroll trigger activated')
-          fetchMore()
-        }
-      }
-    },
-    [isSearchActive, searchHasMore, searchLoading, searchQuery, searchOffset, user, hasMore, loading, fetchMore]
-  )
-
-  // Preload observer - triggers much earlier (when user is about halfway through current content)
-  useEffect(() => {
-    const element = preloadObserverRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(handlePreloadObserver, {
-      threshold: 0.1,
-      rootMargin: '800px' // Much larger margin for early preloading
-    })
-
-    if (!isSearchActive) {
-      observer.observe(element)
+    } finally {
+      setSearchLoading(false)
     }
+  }, [isSearchActive, searchQuery, user])
 
-    return () => observer.disconnect()
-  }, [handlePreloadObserver, isSearchActive])
-
-  // Main infinite scroll observer - smaller margin since content should be preloaded
-  useEffect(() => {
-    const element = observerRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(handleObserver, {
-      threshold: 0.1,
-      rootMargin: '100px' // Smaller margin since content is preloaded
-    })
-
-    observer.observe(element)
-
-    return () => observer.disconnect()
-  }, [handleObserver])
-
-
-  // Start a new client-side search
   const startSearch = useCallback(async (q: string, imdbId?: string) => {
     setIsSearchActive(true)
     setSearchQuery(q)
@@ -187,49 +95,34 @@ function DiscoverContent() {
     setSearchOffset(0)
     setIsSearchPanelOpen(false)
     setSearchLoading(true)
-    
+
     try {
       if (imdbId) {
-        // Exact show selection - fetch specific show by IMDB ID
-        console.log('🔍 [DiscoverSection] Fetching specific show:', imdbId)
         const result = await fetchShowByImdbId(imdbId, user?.id)
         if (result.error) {
           setSearchError(result.error)
-          setSearchResults([])
-          setSearchHasMore(false)
-          setSearchOffset(0)
         } else if (result.show) {
           setSearchResults([result.show])
-          setSearchHasMore(false) // Only one specific show
-          setSearchOffset(0)
-        } else {
-          setSearchError(new Error('Show not found'))
-          setSearchResults([])
-          setSearchHasMore(false)
-          setSearchOffset(0)
         }
+        setSearchLoading(false)
+        return
+      }
+
+      const result = await searchShowsDatabase({
+        query: q,
+        limit: 20,
+        offset: 0,
+        excludeUserShows: false,
+        userId: user?.id,
+        sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
+      })
+
+      if (result.error) {
+        setSearchError(result.error)
       } else {
-        // General search - use database search
-        console.log('🔍 [DiscoverSection] Performing general search:', q)
-        const result = await searchShowsDatabase({
-          query: q,
-          limit: 20,
-          offset: 0,
-          // Do not exclude user's shows in full search to match quick search behavior
-          excludeUserShows: false,
-          userId: user?.id,
-          sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
-        })
-        if (result.error) {
-          setSearchError(result.error)
-          setSearchResults([])
-          setSearchHasMore(false)
-          setSearchOffset(0)
-        } else {
-          setSearchResults(result.shows)
-          setSearchHasMore(result.hasMore)
-          setSearchOffset(result.nextOffset ?? 0)
-        }
+        setSearchResults(result.shows)
+        setSearchHasMore(result.hasMore)
+        setSearchOffset(result.nextOffset ?? 0)
       }
     } finally {
       setSearchLoading(false)
@@ -246,193 +139,251 @@ function DiscoverContent() {
     setSearchSortBy('latest')
   }, [])
 
-  // Clear search when discovery navigation is clicked again
+  const handleFilterToggle = useCallback(() => {
+    if (isSearchPanelOpen) {
+      setIsSearchPanelOpen(false)
+    }
+    if (isSearchActive) {
+      clearSearch()
+    }
+    toggleFilter()
+  }, [isSearchPanelOpen, isSearchActive, clearSearch, toggleFilter])
+
   useEffect(() => {
     if (discoverResetTrigger > 0 && isSearchActive) {
-      console.log('🔍 [DiscoverSection] Clearing search due to discovery nav click')
       clearSearch()
     }
   }, [discoverResetTrigger, isSearchActive, clearSearch])
 
-  // Handle search sort change - restart search with new sorting
-  const handleSearchSortChange = useCallback(async (newSort: SortOption) => {
-    if (!isSearchActive || !searchQuery) return
-    
-    setSearchSortBy(newSort)
-    setSearchResults([])
-    setSearchError(null)
-    setSearchHasMore(false)
-    setSearchOffset(0)
-    setSearchLoading(true)
-    
-    try {
-      const result = await searchShowsDatabase({
-        query: searchQuery,
-        limit: 20,
-        offset: 0,
-        // Do not exclude user's shows in full search to match quick search behavior
-        excludeUserShows: false,
-        userId: user?.id,
-        sortBy: newSort === 'rating' ? 'by_rating' : newSort
-      })
-      
-      if (result.error) {
-        setSearchError(result.error)
-        setSearchResults([])
-        setSearchHasMore(false)
-        setSearchOffset(0)
-      } else {
-        setSearchResults(result.shows)
-        setSearchHasMore(result.hasMore)
-        setSearchOffset(result.nextOffset ?? 0)
-      }
-    } finally {
-      setSearchLoading(false)
-    }
-  }, [isSearchActive, searchQuery, user])
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [target] = entries
+    if (!target.isIntersecting) return
 
-  // Effective values for UI - keep existing shows visible during filter application
+    if (isSearchActive) {
+      if (searchHasMore && !searchLoading) {
+        setSearchLoading(true)
+        ;(async () => {
+          const result = await searchShowsDatabase({
+            query: searchQuery,
+            limit: 20,
+            offset: searchOffset,
+            excludeUserShows: false,
+            userId: user?.id,
+            sortBy: searchSortBy === 'rating' ? 'by_rating' : searchSortBy
+          })
+          if (!result.error) {
+            setSearchResults(prev => [...prev, ...result.shows])
+            setSearchHasMore(result.hasMore)
+            setSearchOffset(result.nextOffset ?? searchOffset)
+          }
+          setSearchLoading(false)
+        })()
+      }
+    } else if (hasMore && !loading) {
+      fetchMore()
+    }
+  }, [isSearchActive, searchHasMore, searchLoading, searchQuery, searchOffset, user, searchSortBy, hasMore, loading, fetchMore])
+
+  useEffect(() => {
+    const element = observerRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+      rootMargin: '100px'
+    })
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [handleObserver])
+
+  useEffect(() => {
+    const element = preloadObserverRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(entries => {
+      const [target] = entries
+      if (target.isIntersecting && hasMore && !loading && !isSearchActive && !isPreloading) {
+        preloadNext()
+      }
+    }, {
+      threshold: 0.1,
+      rootMargin: '800px'
+    })
+
+    if (!isSearchActive) {
+      observer.observe(element)
+    }
+
+    return () => observer.disconnect()
+  }, [hasMore, loading, isPreloading, preloadNext, isSearchActive])
+
   const effectiveShows = isSearchActive ? searchResults : shows
   const effectiveLoading = isSearchActive ? searchLoading : loading
   const effectiveError = isSearchActive ? searchError : error
   const effectiveHasMore = isSearchActive ? searchHasMore : hasMore
-  
-  // Show loading state only when no content exists or during initial load
+
   const showLoadingState = effectiveLoading && effectiveShows.length === 0
-  // Show inline loading indicator when applying filters with existing content
   const showInlineLoading = (isApplyingFilters || (effectiveLoading && effectiveShows.length > 0)) && !isSearchActive
 
-  // Debounce the inline loading visual to avoid quick flicker
   const [debouncedInlineLoading, setDebouncedInlineLoading] = useState(false)
   useEffect(() => {
     if (showInlineLoading) {
       const t = setTimeout(() => setDebouncedInlineLoading(true), 220)
       return () => clearTimeout(t)
-    } else {
-      setDebouncedInlineLoading(false)
     }
+    setDebouncedInlineLoading(false)
   }, [showInlineLoading])
 
   const listContainerRef = useRef<HTMLDivElement>(null)
-
-  // Lock list container height during loading to reduce layout jump
   useEffect(() => {
     const el = listContainerRef.current
     if (!el) return
     if (debouncedInlineLoading) {
       const h = el.clientHeight
-      if (h > 0) {
-        el.style.minHeight = `${h}px`
-      }
+      if (h > 0) el.style.minHeight = `${h}px`
     } else {
       el.style.minHeight = ''
     }
   }, [debouncedInlineLoading])
 
+  const scrollToShows = useCallback(() => {
+    const el = listContainerRef.current
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
+
+  const handleSortChange = useCallback((newSort: SortOption) => {
+    if (isSearchActive) {
+      void handleSearchSortChange(newSort)
+    } else {
+      setSortBy(newSort)
+    }
+  }, [isSearchActive, handleSearchSortChange, setSortBy])
+
+  const currentSort = isSearchActive ? searchSortBy : sortBy
+  const isSearchHighlighted = isSearchPanelOpen || isSearchActive
+  const isFilterHighlighted = hasActiveFilters || isFilterOpen
+  const handleSearchToggle = useCallback(() => {
+    setIsSearchPanelOpen(prev => {
+      const next = !prev
+      if (!prev) {
+        closeFilter()
+      }
+      return next
+    })
+  }, [closeFilter])
+
   return (
     <>
-      <div className="relative space-y-6">
-        {/* Controls: left (search+filter), center (counter), right (sort) */}
-        <div className="w-full">
-          <div className="relative flex items-center w-full">
-            {/* Left group: Search + Filter */}
-            <div className="flex gap-2 sm:gap-4 items-center">
+      <section className="hero-section">
+        <div className="hero-inner">
+          <h1 className="hero-headline">
+            <span>NO BANANAS</span>
+            <span>JUST EVERY SHOW</span>
+            <span>ON EARTH</span>
+          </h1>
+          <p className="hero-subtitle">From global streamers to hidden gems worldwide.</p>
+          <div className="flex flex-col items-center gap-3">
+            <button type="button" onClick={scrollToShows} className="hero-scroll-btn" aria-label="Scroll to shows">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m0 0-6-6m6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <div className="discover-controls flex w-full flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsSearchPanelOpen(prev => !prev)}
-                className={`nav-pill h-9 ${isSearchActive ? 'active' : ''}`}
+                type="button"
+                onClick={handleSearchToggle}
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-200 ${
+                  isSearchHighlighted
+                    ? 'bg-[var(--accent-primary)] text-black border-transparent shadow-[0_0_14px_rgba(245,180,0,0.6)]'
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]'
+                }`}
                 aria-label="Open search"
+                aria-pressed={isSearchHighlighted}
               >
-                <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.2-5.2M9.75 17.5a7.75 7.75 0 1 1 0-15.5 7.75 7.75 0 0 1 0 15.5z" />
                 </svg>
               </button>
 
               <button
-                onClick={toggleFilter}
-                aria-label="Ava filtrid"
-                title="Filtrid"
-                className={`nav-pill relative ${hasActiveFilters ? 'active' : ''} h-9`}
+                type="button"
+                onClick={handleFilterToggle}
+                aria-label="Open filters"
+                aria-expanded={isFilterOpen}
+                aria-pressed={isFilterOpen}
+                className={`relative flex h-11 items-center gap-2 rounded-full border px-5 text-[0.65rem] sm:text-xs font-semibold uppercase tracking-[0.28em] transition-colors duration-200 ${
+                  isFilterHighlighted
+                    ? 'bg-white/10 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-[0_0_18px_rgba(245,180,0,0.35)]'
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:border-[var(--accent-primary)]'
+                }`}
               >
-                <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 6h10m8 0h-4m-4 0a2 2 0 11-4 0 2 2 0 014 0zM3 12h4m14 0H10m8 0a2 2 0 10-4 0 2 2 0 004 0zM3 18h10m8 0h-4m-4 0a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18M6 12h12M10 19h4" />
                 </svg>
+                <span className="hidden sm:inline">Filter</span>
                 {hasActiveFilters && (
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
+                  <span className="absolute -top-1 -right-1 inline-flex h-3 w-3 items-center justify-center rounded-full bg-[var(--accent-primary)] shadow-[0_0_12px_rgba(245,180,0,0.6)]" />
                 )}
               </button>
             </div>
 
-            {/* Center counter */}
-            <div className="absolute left-1/2 -translate-x-1/2 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
-              {effectiveShows.length > 0 && !debouncedInlineLoading &&
-                `${effectiveShows.length} ${isSearchActive ? 'result' : 'show'}${effectiveShows.length === 1 ? '' : 's'}`}
-              {debouncedInlineLoading && (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Loading filtered content...</span>
-                </span>
-              )}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {DISCOVER_SORT_OPTIONS.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSortChange(option.value)}
+                  className={`sort-toggle ${currentSort === option.value ? 'sort-toggle--active' : ''}`}
+                  aria-pressed={currentSort === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Right group: Sort options only */}
-            <div className="ml-auto flex items-center">
-              <SortSelector
-                value={isSearchActive ? searchSortBy : sortBy}
-                onChange={isSearchActive ? handleSearchSortChange : setSortBy}
-                options={DISCOVER_SORT_OPTIONS}
-                showFilter={false}
-                className="w-auto"
-                mobileEqualWidth={false}
-                buttonClassName="h-9"
-                theme="discover"
-              />
-            </div>
+          <div className="min-h-[1.25rem] text-center text-xs sm:text-sm text-white/60">
+            {debouncedInlineLoading && (
+              <span className="inline-flex items-center justify-center gap-2">
+                <svg className="h-4 w-4 animate-spin text-white/60" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V2C5.373 2 1 6.373 1 12h3zm2 5.291A7.962 7.962 0 014 12H1c0 3.042 1.135 5.824 3 7.938l2-2.647z" />
+                </svg>
+                <span>Loading filtered content...</span>
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Inline Search Panel */}
         <SearchPanel
           isOpen={isSearchPanelOpen}
           onClose={() => setIsSearchPanelOpen(false)}
           onCommit={startSearch}
-          inline={true}
+          inline
         />
+        <FilterSidebar inline />
 
-        {/* Active search chip */}
         {isSearchActive && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-[var(--text-secondary)]">
+            <span>
               Searching for: <span className="font-semibold text-[var(--text-primary)]">{searchQuery}</span>
             </span>
-            <button
-              onClick={clearSearch}
-              className="action-btn text-xs sm:text-sm"
-            >
+            <button onClick={clearSearch} className="action-button text-xs sm:text-sm uppercase tracking-[0.2em]">
               Clear search
             </button>
           </div>
         )}
 
-        {/* Shows list: keep opacity steady to avoid flicker */}
         <div ref={listContainerRef}>
           <ShowsList
             shows={effectiveShows}
@@ -453,57 +404,40 @@ function DiscoverContent() {
           />
         </div>
 
-        {/* Preload Trigger - positioned earlier in the content (disabled in search mode) */}
         {!isSearchActive && hasMore && shows.length > 5 && (
           <div
             ref={preloadObserverRef}
             className="h-1 w-full opacity-0 pointer-events-none"
-            style={{
-              position: 'absolute',
-              bottom: '60vh' // Position this trigger well before the end
-            }}
+            style={{ position: 'absolute', bottom: '60vh' }}
           />
         )}
 
-        {/* Infinite Scroll Trigger */}
         {effectiveHasMore && (
           <div ref={observerRef} className="text-center py-8">
             {effectiveLoading && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <div className="text-sm text-gray-500">Loading more {isSearchActive ? 'results' : 'shows'}...</div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                <div className="text-sm text-white/60">Loading more {isSearchActive ? 'results' : 'shows'}...</div>
               </div>
             )}
             {!effectiveLoading && !isSearchActive && isPreloading && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="animate-pulse h-2 w-32 bg-blue-200 rounded"></div>
-                <div className="text-xs text-gray-400">Preparing next shows...</div>
-              </div>
-            )}
-            {!effectiveLoading && !isSearchActive && preloadedShows.length > 0 && (
-              <div className="flex flex-col items-center space-y-3">
-                <div className="h-2 w-32 bg-green-200 rounded"></div>
-                <div className="text-xs text-green-600">Next shows ready!</div>
+                <div className="animate-pulse h-2 w-32 bg-yellow-300/60 rounded"></div>
+                <div className="text-xs text-white/50">Preparing next shows...</div>
               </div>
             )}
           </div>
         )}
 
-        {/* End State */}
         {!hasMore && !loading && shows.length > 0 && (
           <div className="text-center py-8">
-            <div className="text-gray-500 text-lg font-medium mb-2">
+            <div className="text-white/70 text-lg font-medium mb-2">
               That&apos;s it folks! 🎬
             </div>
-            <p className="text-gray-400">
-              Come back soon - new great shows are added daily
-            </p>
+            <p className="text-white/50">Come back soon - new great shows are added daily</p>
           </div>
         )}
       </div>
-      
-      {/* Filter Sidebar */}
-      <FilterSidebar />
     </>
   )
 }
