@@ -137,7 +137,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={() => void handleSignOut()}
-                  className="md:hidden text-[0.56rem] tracking-[0.32em] uppercase font-semibold text-white/70 hover:text-[var(--accent-primary)] transition-colors"
+                  className="md:hidden text-[0.5rem] tracking-[0.28em] uppercase font-semibold text-white/60 hover:text-[var(--accent-primary)] transition-colors"
                 >
                   Sign Out
                 </button>

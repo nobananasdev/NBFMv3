@@ -420,7 +420,7 @@ function ShowCardComponent({
             {extraContent}
 
             <div className="mt-auto flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3">
-              <div className="flex items-center">
+              <div className="flex items-center justify-center sm:justify-start">
                 {streamingBadge}
               </div>
               {imdbLink}

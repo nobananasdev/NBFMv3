@@ -32,7 +32,7 @@ export default function ScrollToTopButton() {
       type="button"
       aria-label="Tagasi üles"
       onClick={scrollUp}
-      className="fixed z-40 bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full p-3 sm:p-3.5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30 border border-white/10 transition-transform duration-200 active:scale-95"
+      className="fixed z-40 bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full p-3 sm:p-3.5 bg-[#F5B400] hover:bg-[#FFD700] text-white shadow-lg shadow-yellow-900/30 border border-white/10 transition-transform duration-200 active:scale-95"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
