@@ -1,8 +1,15 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { MainLayout } from '@/components/layout/MainLayout'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'No Bananas For Me',
@@ -18,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="preconnect" href="https://tluyjrjdwtskuconslaj.supabase.co" />
         <link rel="dns-prefetch" href="//tluyjrjdwtskuconslaj.supabase.co" />

@@ -42,14 +42,14 @@
 /* Base Styles */
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-inter, 'Inter', system-ui, sans-serif);
     scroll-behavior: smooth;
   }
   
   body {
     background: linear-gradient(180deg, #060b13 0%, #121a27 45%, #0c141f 100%);
     color: var(--text-primary);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-inter, 'Inter', system-ui, sans-serif);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
