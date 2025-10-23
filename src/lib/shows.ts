@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { Show, ShowStatus, Profile, STREAMING_PROVIDER_IDS } from '@/types/database'
+import { cachedRequest, generateCacheKey } from '@/lib/rateLimiter'
 
 export interface ShowWithGenres extends Show {
   genre_names?: string[]
@@ -1222,25 +1223,37 @@ export function formatSeasonInfo(show: Show): { seasonText: string, airDate: str
  */
 export async function fetchGenres(): Promise<{ genres: Array<{ id: number; name: string }>, error: any }> {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const cacheKey = generateCacheKey('genres', {})
     
-    const headers = {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
-      'Content-Type': 'application/json'
-    }
+    // Cache genres for 30 minutes (they rarely change)
+    return await cachedRequest(
+      cacheKey,
+      async () => {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        
+        const headers = {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
 
-    const url = `${supabaseUrl}/rest/v1/genres?select=id,name&order=name.asc`
-    const response = await fetch(url, { method: 'GET', headers })
-    
-    if (!response.ok) {
-      console.error('Error fetching genres:', response.status)
-      return { genres: [], error: new Error(`Failed to fetch genres: ${response.status}`) }
-    }
+        const url = `${supabaseUrl}/rest/v1/genres?select=id,name&order=name.asc`
+        const response = await fetch(url, { method: 'GET', headers })
+        
+        if (!response.ok) {
+          console.error('Error fetching genres:', response.status)
+          return { genres: [], error: new Error(`Failed to fetch genres: ${response.status}`) }
+        }
 
-    const genres = await response.json()
-    return { genres: genres || [], error: null }
+        const genres = await response.json()
+        return { genres: genres || [], error: null }
+      },
+      {
+        cacheTTL: 30 * 60 * 1000, // 30 minutes
+        skipQueue: true // Genres are lightweight, no need to queue
+      }
+    )
   } catch (error) {
     console.error('Error in fetchGenres:', error)
     return { genres: [], error }
@@ -1291,9 +1304,21 @@ export async function fetchYearRange(): Promise<{ yearRange: [number, number], e
  */
 export async function fetchStreamingProviders(): Promise<{ streamers: Array<{ id: number; name: string }>, error: any }> {
   try {
-    // Always return the full canonical list so filters show all options
-    const streamers = CANONICAL_STREAMER_LIST.map((name, idx) => ({ id: idx + 1, name }))
-    return { streamers, error: null }
+    const cacheKey = generateCacheKey('streamers', {})
+    
+    // Cache streamers for 1 hour (static list)
+    return await cachedRequest(
+      cacheKey,
+      async () => {
+        // Always return the full canonical list so filters show all options
+        const streamers = CANONICAL_STREAMER_LIST.map((name, idx) => ({ id: idx + 1, name }))
+        return { streamers, error: null }
+      },
+      {
+        cacheTTL: 60 * 60 * 1000, // 1 hour
+        skipQueue: true // Static data, no need to queue
+      }
+    )
   } catch (error) {
     return { streamers: [], error }
   }
@@ -1577,6 +1602,45 @@ export async function quickSearchDatabase(params: {
     }
 
     console.log('🔍 [quickSearchDatabase] Quick search for:', q)
+    
+    // Generate cache key for this search
+    const cacheKey = generateCacheKey('quickSearch', {
+      prefix: q,
+      genreIds: params.genreIds?.join(',') || '',
+      yearRange: params.yearRange?.join('-') || '',
+      streamerIds: params.streamerIds?.join(',') || '',
+      limit: params.limit || 10,
+      userId: params.userId || 'anonymous'
+    })
+    
+    // Use cached request with 2 minute TTL
+    return await cachedRequest(
+      cacheKey,
+      async () => await quickSearchDatabaseInternal(params),
+      {
+        cacheTTL: 2 * 60 * 1000, // 2 minutes
+        skipQueue: false
+      }
+    )
+  } catch (error) {
+    console.error('❌ [quickSearchDatabase] Error:', error)
+    return { suggestions: [], error }
+  }
+}
+
+/**
+ * Internal implementation of quick search (wrapped by cached version)
+ */
+async function quickSearchDatabaseInternal(params: {
+  prefix: string
+  genreIds?: number[]
+  yearRange?: [number, number]
+  streamerIds?: number[]
+  limit?: number
+  userId?: string
+}): Promise<{ suggestions: Array<{ imdb_id: string; name: string; original_name: string | null; creators: string[]; main_cast: string[]; user_status?: ShowStatus }>; error: any }> {
+  try {
+    const q = params.prefix?.trim() || ''
     
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

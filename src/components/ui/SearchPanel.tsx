@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useFilter } from '@/contexts/FilterContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { quickSearchDatabase } from '@/lib/shows'
 import { highlightText, highlightTextArray } from '@/lib/textHighlight'
 import { ShowStatus } from '@/types/database'
+import { debounce, cachedRequest, generateCacheKey } from '@/lib/rateLimiter'
 
 interface SearchPanelProps {
   isOpen: boolean
@@ -71,7 +72,70 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
     }
   }, [isOpen, inline, shouldRender])
 
-  // Debounced quick suggestions after 3 characters (changed from 3+)
+  // Debounced search function with caching and rate limiting
+  const performSearch = useCallback(async (query: string) => {
+    if (!mountedRef.current) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      if (controllerRef.current) controllerRef.current.abort()
+      controllerRef.current = new AbortController()
+
+      // Generate cache key for this search
+      const cacheKey = generateCacheKey('search', {
+        prefix: query,
+        userId: user?.id || 'anonymous'
+      })
+
+      // Use cached request with 2 minute TTL for search results
+      const result = await cachedRequest(
+        cacheKey,
+        () => quickSearchDatabase({
+          prefix: query,
+          limit: 10,
+          userId: user?.id
+        }),
+        {
+          cacheTTL: 2 * 60 * 1000, // 2 minutes
+          skipQueue: false // Use queue to prevent overwhelming the server
+        }
+      )
+
+      if (!mountedRef.current) return
+      
+      if (result.error) {
+        setError('Failed to load suggestions')
+        setSuggestions([])
+      } else {
+        setSuggestions(result.suggestions)
+      }
+    } catch (err: any) {
+      if (!mountedRef.current) return
+      
+      // Check if it's a rate limit error
+      if (err.message?.includes('Rate limit')) {
+        setError('Too many searches. Please wait a moment.')
+      } else {
+        setError('Failed to load suggestions')
+      }
+      setSuggestions([])
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
+  }, [user?.id])
+
+  // Create stable debounced search ref
+  const debouncedSearchRef = useRef<ReturnType<typeof debounce> | null>(null)
+  
+  if (!debouncedSearchRef.current) {
+    debouncedSearchRef.current = debounce((query: string) => {
+      performSearch(query)
+    }, 300)
+  }
+
+  // Trigger search when input changes
   useEffect(() => {
     if (!isOpen) return
 
@@ -79,41 +143,15 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
     if (q.length < 3) {
       setSuggestions([])
       setError(null)
+      setLoading(false)
       return
     }
 
-    setLoading(true)
-    setError(null)
-
-    const h = setTimeout(async () => {
-      try {
-        if (controllerRef.current) controllerRef.current.abort()
-        controllerRef.current = new AbortController()
-
-        const { suggestions, error } = await quickSearchDatabase({
-          prefix: q,
-          limit: 10,
-          userId: user?.id
-        })
-
-        if (!mountedRef.current) return
-        if (error) {
-          setError('Failed to load suggestions')
-          setSuggestions([])
-        } else {
-          setSuggestions(suggestions)
-        }
-      } catch {
-        if (!mountedRef.current) return
-        setError('Failed to load suggestions')
-        setSuggestions([])
-      } finally {
-        if (mountedRef.current) setLoading(false)
-      }
-    }, 150)
-
-    return () => clearTimeout(h)
-  }, [input, isOpen, user?.id])
+    // Call debounced search
+    if (debouncedSearchRef.current) {
+      debouncedSearchRef.current(q)
+    }
+  }, [input, isOpen, performSearch])
 
   const handleCommit = () => {
     const q = input.trim()
