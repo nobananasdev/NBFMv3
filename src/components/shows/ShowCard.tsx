@@ -215,8 +215,7 @@ function ShowCardComponent({
               : 'opacity-0 scale-95'
         }`}
       >
-        <div className=
-          "text-center">
+        <div className="text-center">
           <div className="text-3xl font-bold text-[var(--accent-primary)] mb-4">
             {actionResult.label}
           </div>
@@ -299,6 +298,107 @@ function ShowCardComponent({
   const placeholderInnerClasses = compact
     ? 'h-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse rounded-full w-1/2'
     : 'h-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse rounded-full w-1/3'
+
+  const renderActionButtonsDesktop = () => {
+    if (!showActions) return null
+    
+    return (
+      <>
+        <div className="border-b border-white/20 mb-3" />
+        <div className="action-toolbar flex flex-nowrap items-center justify-center gap-2 overflow-x-auto px-1 sm:justify-between sm:overflow-visible">
+          <div className="flex items-center justify-center gap-2">
+            {ACTION_BUTTONS.filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
+              const isUserRated = show.user_status === button.status
+              const icon = ACTION_ICON_MAP[button.status]
+              return (
+                <button
+                  key={button.status}
+                  type="button"
+                  onClick={() => handleAction(button.status)}
+                  disabled={isProcessing}
+                  aria-pressed={isUserRated}
+                  className={`action-button action-button--primary ${isUserRated ? 'action-button--active' : ''}`}
+                >
+                  <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
+                  <span className="action-button__label">{button.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-nowrap items-center justify-center gap-2 sm:gap-3">
+            {ACTION_BUTTONS.filter(button => button.status !== 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
+              const isUserRated = show.user_status === button.status
+              const displayLabel = button.label
+              const icon = ACTION_ICON_MAP[button.status]
+              return (
+                <button
+                  key={button.status}
+                  type="button"
+                  onClick={() => handleAction(button.status)}
+                  disabled={isProcessing}
+                  aria-pressed={isUserRated}
+                  className={`action-button action-button--rating ${isUserRated ? 'action-button--active' : ''}`}
+                >
+                  <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
+                  <span className="action-button__label">{displayLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const renderActionButtonsMobile = () => {
+    if (!showActions) return null
+    
+    return (
+      <>
+        <div className="border-b border-white/20 mb-3" />
+        <div className="action-toolbar flex flex-col gap-3">
+          {ACTION_BUTTONS.filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
+            const isUserRated = show.user_status === button.status
+            const icon = ACTION_ICON_MAP[button.status]
+            return (
+              <button
+                key={button.status}
+                type="button"
+                onClick={() => handleAction(button.status)}
+                disabled={isProcessing}
+                aria-pressed={isUserRated}
+                className={`action-button action-button--primary w-full ${isUserRated ? 'action-button--active' : ''}`}
+              >
+                <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
+                <span className="action-button__label">{button.label}</span>
+              </button>
+            )
+          })}
+
+          <div className="flex items-center justify-center gap-2">
+            {ACTION_BUTTONS.filter(button => button.status !== 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
+              const isUserRated = show.user_status === button.status
+              const icon = ACTION_ICON_MAP[button.status]
+              return (
+                <button
+                  key={button.status}
+                  type="button"
+                  onClick={() => handleAction(button.status)}
+                  disabled={isProcessing}
+                  aria-pressed={isUserRated}
+                  className={`action-button action-button--rating flex-1 ${isUserRated ? 'action-button--active' : ''}`}
+                >
+                  <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
+                  <span className="action-button__label">{button.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <div className={`show-card-modern ${cardPadding} relative group transition-all duration-500 ease-out ${cardMinHeight} ${cardVisibilityClass}`}>
@@ -407,9 +507,9 @@ function ShowCardComponent({
             </div>
 
             {showDescription && description && (
-              <div>
+              <div className="text-center lg:text-left">
                 <p
-                  className="text-white/80 text-sm lg:text-base leading-relaxed pr-8 lg:pr-12"
+                  className="text-white/80 text-sm lg:text-base leading-relaxed lg:pr-12"
                   style={{ margin: 0 }}
                 >
                   {description}
@@ -427,54 +527,14 @@ function ShowCardComponent({
             </div>
           </div>
 
-          {showActions && (
-            <div className="mt-4">
-              <div className="border-b border-white/20 mb-3" />
-              <div className="action-toolbar flex flex-nowrap items-center justify-center gap-2 overflow-x-auto px-1 sm:justify-between sm:overflow-visible">
-                <div className="flex items-center justify-center gap-2">
-                  {ACTION_BUTTONS.filter(button => button.status === 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
-                    const isUserRated = show.user_status === button.status
-                    const icon = ACTION_ICON_MAP[button.status]
-                    return (
-                      <button
-                        key={button.status}
-                        type="button"
-                        onClick={() => handleAction(button.status)}
-                        disabled={isProcessing}
-                        aria-pressed={isUserRated}
-                        className={`action-button action-button--primary ${isUserRated ? 'action-button--active' : ''}`}
-                      >
-                        <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
-                        <span className="action-button__label">{button.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div className="flex flex-nowrap items-center justify-center gap-2 sm:gap-3">
-                  {ACTION_BUTTONS.filter(button => button.status !== 'watchlist' && !hiddenActions.includes(button.status)).map(button => {
-                    const isUserRated = show.user_status === button.status
-                    const displayLabel = button.label
-                    const icon = ACTION_ICON_MAP[button.status]
-                    return (
-                      <button
-                        key={button.status}
-                        type="button"
-                        onClick={() => handleAction(button.status)}
-                        disabled={isProcessing}
-                        aria-pressed={isUserRated}
-                        className={`action-button action-button--rating ${isUserRated ? 'action-button--active' : ''}`}
-                      >
-                        <Image src={icon.src} alt={icon.alt} width={28} height={28} className="action-button__icon" />
-                        <span className="action-button__label">{displayLabel}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="mt-4 hidden lg:block">
+            {renderActionButtonsDesktop()}
+          </div>
         </div>
+      </div>
+
+      <div className="lg:hidden mt-4">
+        {renderActionButtonsMobile()}
       </div>
     </div>
   )
