@@ -295,9 +295,10 @@ function DiscoverContent() {
         </div>
       </section>
 
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-8">
         <div className="space-y-3">
-          <div className="discover-controls flex w-full flex-wrap items-center justify-between gap-3">
+          {/* Desktop layout - horizontal */}
+          <div className="discover-controls hidden sm:flex w-full flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -321,7 +322,7 @@ function DiscoverContent() {
                 aria-label="Open filters"
                 aria-expanded={isFilterOpen}
                 aria-pressed={isFilterOpen}
-                className={`relative flex h-11 items-center gap-2 rounded-full border px-5 text-[0.65rem] sm:text-xs font-semibold uppercase tracking-[0.28em] transition-colors duration-200 ${
+                className={`relative flex h-11 items-center gap-2 rounded-full border px-5 text-xs font-semibold uppercase tracking-[0.28em] transition-colors duration-200 ${
                   isFilterHighlighted
                     ? 'bg-white/10 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-[0_0_18px_rgba(245,180,0,0.35)]'
                     : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:border-[var(--accent-primary)]'
@@ -330,14 +331,14 @@ function DiscoverContent() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18M6 12h12M10 19h4" />
                 </svg>
-                <span className="hidden sm:inline">Filter</span>
+                <span>Filter</span>
                 {hasActiveFilters && (
                   <span className="absolute -top-1 -right-1 inline-flex h-3 w-3 items-center justify-center rounded-full bg-[var(--accent-primary)] shadow-[0_0_12px_rgba(245,180,0,0.6)]" />
                 )}
               </button>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-3">
               {DISCOVER_SORT_OPTIONS.map(option => (
                 <button
                   key={option.value}
@@ -349,6 +350,64 @@ function DiscoverContent() {
                   {option.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Mobile layout - vertical stacking */}
+          <div className="discover-controls sm:hidden flex flex-col w-full gap-3">
+            {/* Sort buttons on top */}
+            <div className="flex items-center justify-center gap-2">
+              {DISCOVER_SORT_OPTIONS.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSortChange(option.value)}
+                  className={`sort-toggle ${currentSort === option.value ? 'sort-toggle--active' : ''}`}
+                  aria-pressed={currentSort === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search and Filter buttons below */}
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleSearchToggle}
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-200 ${
+                  isSearchHighlighted
+                    ? 'bg-[var(--accent-primary)] text-black border-transparent shadow-[0_0_14px_rgba(245,180,0,0.6)]'
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]'
+                }`}
+                aria-label="Open search"
+                aria-pressed={isSearchHighlighted}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.2-5.2M9.75 17.5a7.75 7.75 0 1 1 0-15.5 7.75 7.75 0 0 1 0 15.5z" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFilterToggle}
+                aria-label="Open filters"
+                aria-expanded={isFilterOpen}
+                aria-pressed={isFilterOpen}
+                className={`relative flex h-11 items-center gap-2 rounded-full border px-5 text-[0.65rem] font-semibold uppercase tracking-[0.28em] transition-colors duration-200 ${
+                  isFilterHighlighted
+                    ? 'bg-white/10 border-[var(--accent-primary)] text-[var(--accent-primary)] shadow-[0_0_18px_rgba(245,180,0,0.35)]'
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:border-[var(--accent-primary)]'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18M6 12h12M10 19h4" />
+                </svg>
+                <span>Filters</span>
+                {hasActiveFilters && (
+                  <span className="absolute -top-1 -right-1 inline-flex h-3 w-3 items-center justify-center rounded-full bg-[var(--accent-primary)] shadow-[0_0_12px_rgba(245,180,0,0.6)]" />
+                )}
+              </button>
             </div>
           </div>
 
