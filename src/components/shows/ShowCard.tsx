@@ -453,8 +453,8 @@ function ShowCardComponent({
                   setImageLoaded(true)
                   setCurrentImageUrl(optimizedUrl)
                 }}
-                onError={(error) => {
-                  console.warn('Image load error for:', show.name, error)
+                onError={() => {
+                  // console.warn('Image load error for:', show.name)
                   if (optimizedUrl !== posterUrl && posterUrl) {
                     setCurrentImageUrl(posterUrl)
                   } else {

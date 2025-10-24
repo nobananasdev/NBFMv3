@@ -7,7 +7,7 @@ import { ShowWithGenres, getPosterUrl } from './shows'
 
 // Connection management
 let activeConnections = 0
-const MAX_CONNECTIONS = 12 // Increased from 6 to allow more concurrent image loads
+const MAX_CONNECTIONS = 6 // Optimized for local dev performance
 const connectionQueue: Array<() => void> = []
 
 // Format optimization
@@ -187,12 +187,12 @@ function preloadOptimizedImage(url: string, priority: 'high' | 'low' = 'low'): P
       img.onload = () => {
         loadedImages.add(url)
         loadedImages.add(optimizedUrl)
-        console.log(`📸 [ImageOptimizer] Successfully preloaded (${formats.webp !== formats.original ? 'optimized' : 'original'}):`, url)
+        // console.log(`📸 [ImageOptimizer] Successfully preloaded (${formats.webp !== formats.original ? 'optimized' : 'original'}):`, url)
         resolve(optimizedUrl)
       }
-      
+
       img.onerror = (error) => {
-        console.warn('📸 [ImageOptimizer] Failed to preload:', url, error)
+        // console.warn('📸 [ImageOptimizer] Failed to preload:', url, error)
         // Try fallback to original format
         if (optimizedUrl !== formats.original) {
           const fallbackImg = new Image()
@@ -222,23 +222,23 @@ function preloadOptimizedImage(url: string, priority: 'high' | 'low' = 'low'): P
  * Preload poster images for shows with prioritization
  */
 export async function preloadShowImagesOptimized(
-  shows: ShowWithGenres[], 
+  shows: ShowWithGenres[],
   priority: 'high' | 'low' = 'low'
 ): Promise<void> {
   if (!shows.length) return
 
-  console.log(`📸 [ImageOptimizer] Starting optimized preload for ${shows.length} show images (priority: ${priority})`)
+  // console.log(`📸 [ImageOptimizer] Starting optimized preload for ${shows.length} show images (priority: ${priority})`)
 
   const networkInfo = getNetworkInfo()
-  
-  // Increased concurrent limits for faster loading
-  let concurrentLimit = 8
+
+  // Optimized concurrent limits for better local dev performance
+  let concurrentLimit = 4
   if (networkInfo.effectiveType === 'slow-2g' || networkInfo.saveData) {
-    concurrentLimit = 4
+    concurrentLimit = 2
   } else if (networkInfo.effectiveType === '2g') {
-    concurrentLimit = 6
+    concurrentLimit = 3
   } else if (networkInfo.downlink > 10) {
-    concurrentLimit = 12
+    concurrentLimit = 6
   }
 
   const imageUrls = shows
@@ -246,7 +246,7 @@ export async function preloadShowImagesOptimized(
     .filter((url): url is string => !!url)
 
   if (!imageUrls.length) {
-    console.log('📸 [ImageOptimizer] No valid poster URLs to preload')
+    // console.log('📸 [ImageOptimizer] No valid poster URLs to preload')
     return
   }
 
@@ -266,10 +266,10 @@ export async function preloadShowImagesOptimized(
         await new Promise(resolve => setTimeout(resolve, 50))
       }
     }
-    
-    console.log(`📸 [ImageOptimizer] Completed optimized preloading ${imageUrls.length} images`)
+
+    // console.log(`📸 [ImageOptimizer] Completed optimized preloading ${imageUrls.length} images`)
   } catch (error) {
-    console.error('📸 [ImageOptimizer] Error during batch preload:', error)
+    // console.error('📸 [ImageOptimizer] Error during batch preload:', error)
   }
 }
 
@@ -295,12 +295,12 @@ export function isImagePreloaded(url: string): boolean {
  * Preload images for the next batch with delay
  */
 export function preloadNextBatchImagesOptimized(
-  shows: ShowWithGenres[], 
+  shows: ShowWithGenres[],
   delay: number = 1000
 ): void {
   setTimeout(() => {
     preloadShowImagesOptimized(shows, 'low').catch(error => {
-      console.error('📸 [ImageOptimizer] Error in delayed preload:', error)
+      // console.error('📸 [ImageOptimizer] Error in delayed preload:', error)
     })
   }, delay)
 }
@@ -312,7 +312,7 @@ export function clearImageCaches(): void {
   formatCache.clear()
   preloadCache.clear()
   loadedImages.clear()
-  console.log('📸 [ImageOptimizer] All caches cleared')
+  // console.log('📸 [ImageOptimizer] All caches cleared')
 }
 
 /**

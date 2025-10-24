@@ -44,59 +44,66 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const refreshCounters = useCallback(async () => {
     try {
-      // Get discovery count (shows with show_in_discovery = true, excluding user shows if logged in)
-      const { count: discoverCountResult } = await supabase
-        .from('shows')
-        .select('*', { count: 'exact', head: true })
-        .eq('show_in_discovery', true)
-
-      setDiscoverCount(discoverCountResult || 0)
-
       if (!user) {
+        // Only fetch discover count for non-authenticated users
+        const { count: discoverCountResult } = await supabase
+          .from('shows')
+          .select('*', { count: 'exact', head: true })
+          .eq('show_in_discovery', true)
+
+        setDiscoverCount(discoverCountResult || 0)
         setWatchlistCount(0)
         setRatedCount(0)
         setNewSeasonsCount(0)
         return
       }
 
-      // Get watchlist count
-      const { count: watchlistCountResult } = await supabase
-        .from('user_shows')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('status', 'watchlist')
-
-      // Get rated count (liked_it, loved_it, and not_for_me)
-      const { count: ratedCountResult } = await supabase
-        .from('user_shows')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .in('status', ['liked_it', 'loved_it', 'not_for_me'])
-
-      // Get new seasons count (shows user rated as loved_it or liked_it with next_season_date)
-      const { data: userLikedShows } = await supabase
-        .from('user_shows')
-        .select(`
-          imdb_id,
-          shows:imdb_id (next_season_date)
-        `)
-        .eq('user_id', user.id)
-        .in('status', ['liked_it', 'loved_it'])
+      // Run all queries in parallel for authenticated users
+      const [
+        discoverResult,
+        watchlistResult,
+        ratedResult,
+        userLikedShows
+      ] = await Promise.all([
+        supabase
+          .from('shows')
+          .select('*', { count: 'exact', head: true })
+          .eq('show_in_discovery', true),
+        supabase
+          .from('user_shows')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'watchlist'),
+        supabase
+          .from('user_shows')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .in('status', ['liked_it', 'loved_it', 'not_for_me']),
+        supabase
+          .from('user_shows')
+          .select(`
+            imdb_id,
+            shows:imdb_id (next_season_date)
+          `)
+          .eq('user_id', user.id)
+          .in('status', ['liked_it', 'loved_it'])
+      ])
 
       const currentDate = new Date()
       const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
 
-      const newSeasonsCount = userLikedShows?.filter(us => {
+      const newSeasonsCount = userLikedShows.data?.filter(us => {
         const show = us.shows as any
         if (!show?.next_season_date) return false
         const nextSeasonDate = new Date(show.next_season_date)
         return nextSeasonDate > sixMonthsAgo
       }).length || 0
 
-      setWatchlistCount(watchlistCountResult || 0)
-      setRatedCount(ratedCountResult || 0)
+      setDiscoverCount(discoverResult.count || 0)
+      setWatchlistCount(watchlistResult.count || 0)
+      setRatedCount(ratedResult.count || 0)
       setNewSeasonsCount(newSeasonsCount)
-      
+
       // Trigger refresh for all sections that depend on user data
       setRefreshTrigger(prev => prev + 1)
     } catch (error) {

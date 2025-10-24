@@ -137,9 +137,9 @@ export function useShows({
         userId: user?.id
       }
       
-      console.log(`🔍 [useShows] Fetch options:`, {
-        view, effectiveSortBy, limit: adjustedLimit, offset: currentOffset, isPreload
-      })
+      // console.log(`🔍 [useShows] Fetch options:`, {
+      //   view, effectiveSortBy, limit: adjustedLimit, offset: currentOffset, isPreload
+      // })
 
       if (view === 'discover') {
         result = await fetchShows({
@@ -204,21 +204,21 @@ export function useShows({
         if (reset) {
           setShows(dedupeByImdb(result.shows))
           setPreloadedShows([]) // Clear preloaded shows on reset
-          
+
           // Aggressively preload images for initial batch with high priority
           if (result.shows.length > 0) {
-            console.log(`🔍 [useShows] Starting aggressive image preloading for ${result.shows.length} initial shows`)
-            preloadShowImages(result.shows).catch(error => {
-              console.warn('🔍 [useShows] Image preloading failed for initial batch:', error)
+            // console.log(`🔍 [useShows] Starting aggressive image preloading for ${result.shows.length} initial shows`)
+            preloadShowImages(result.shows).catch(() => {
+              // console.warn('🔍 [useShows] Image preloading failed for initial batch:', error)
             })
-            
-            // Also immediately start preloading the next batch in the background
-            // Use shorter delay for new_seasons view since cards load faster
-            const preloadDelay = view === 'new_seasons' ? 200 : 500
+
+            // Also start preloading the next batch in the background with reasonable delay
+            // Use optimized delays to avoid blocking UI
+            const preloadDelay = view === 'new_seasons' ? 800 : 1200
             setTimeout(() => {
-              console.log('🔍 [useShows] Starting background preload for next batch')
-              fetchShowsData(false, undefined, true).catch(error => {
-                console.warn('🔍 [useShows] Background preload failed:', error)
+              // console.log('🔍 [useShows] Starting background preload for next batch')
+              fetchShowsData(false, undefined, true).catch(() => {
+                // console.warn('🔍 [useShows] Background preload failed:', error)
               })
             }, preloadDelay)
           }
@@ -229,18 +229,18 @@ export function useShows({
           }
         } else if (isPreload) {
           // Store preloaded shows separately and immediately start preloading images
-          console.log(`🔍 [useShows] Preloaded ${result.shows.length} shows`)
+          // console.log(`🔍 [useShows] Preloaded ${result.shows.length} shows`)
           setPreloadedShows(result.shows)
-          
-          // Immediately and aggressively preload images for the preloaded shows
+
+          // Preload images for the preloaded shows with reasonable delay
           if (result.shows.length > 0) {
-            console.log(`🔍 [useShows] Starting immediate image preloading for ${result.shows.length} preloaded shows`)
-            // Use setTimeout with 0 delay to ensure it doesn't block the UI
+            // console.log(`🔍 [useShows] Starting immediate image preloading for ${result.shows.length} preloaded shows`)
+            // Use setTimeout with moderate delay to avoid blocking the UI
             setTimeout(() => {
-              preloadShowImages(result.shows).catch(error => {
-                console.warn('🔍 [useShows] Image preloading failed for preloaded batch:', error)
+              preloadShowImages(result.shows).catch(() => {
+                // console.warn('🔍 [useShows] Image preloading failed for preloaded batch:', error)
               })
-            }, 0)
+            }, 300)
           }
           
           // Track next offset and hasMore for the preloaded batch
@@ -251,9 +251,9 @@ export function useShows({
         } else {
           // Use preloaded shows if available, otherwise use fetched shows
           let newShows: ShowWithGenres[]
-          
+
           if (preloadedShows.length > 0) {
-            console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows`)
+            // console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows`)
             newShows = preloadedShows
             setPreloadedShows([]) // Clear used preloaded shows
             // Advance server offset using preloaded metadata
@@ -268,7 +268,7 @@ export function useShows({
           } else {
             // Use fetched shows directly
             newShows = result.shows
-            console.log(`🔍 [useShows] Adding ${newShows.length} new shows`)
+            // console.log(`🔍 [useShows] Adding ${newShows.length} new shows`)
             if (view === 'discover' && (result as any).nextOffset !== undefined) {
               setServerOffset((result as any).nextOffset)
             }
@@ -280,12 +280,12 @@ export function useShows({
         // Simplified hasMore logic
         if (view === 'discover' && (result as any).hasMore !== undefined) {
           setHasMore((result as any).hasMore)
-          console.log('🔍 [useShows] Using hasMore from fetchShows result:', (result as any).hasMore)
+          // console.log('🔍 [useShows] Using hasMore from fetchShows result:', (result as any).hasMore)
         } else {
           // For other views - check if we got fewer shows than requested
           const hasMoreShows = result.shows.length === (adjustedLimit === 1000 ? limit : adjustedLimit)
           setHasMore(hasMoreShows)
-          console.log('🔍 [useShows] Fallback hasMore logic:', hasMoreShows, 'got', result.shows.length, 'expected', adjustedLimit === 1000 ? limit : adjustedLimit)
+          // console.log('🔍 [useShows] Fallback hasMore logic:', hasMoreShows, 'got', result.shows.length, 'expected', adjustedLimit === 1000 ? limit : adjustedLimit)
         }
       }
     } catch (err) {
@@ -307,10 +307,10 @@ export function useShows({
 
     // If we already preloaded next batch, consume it without fetching
     if (preloadedShows.length > 0) {
-      console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows for ${view}`)
+      // console.log(`🔍 [useShows] Using ${preloadedShows.length} preloaded shows for ${view}`)
       setShows(prev => dedupeByImdb([...prev, ...preloadedShows]))
       setPreloadedShows([])
-      
+
       if (view === 'discover') {
         if (preloadedNextOffset != null) {
           setServerOffset(preloadedNextOffset)
@@ -321,14 +321,14 @@ export function useShows({
           setPreloadedHasMore(null)
         }
       }
-      
-      // Immediately start preloading the next batch after consuming preloaded shows
+
+      // Start preloading the next batch after consuming preloaded shows
       setTimeout(() => {
-        console.log('🔍 [useShows] Starting next preload after consuming previous batch')
-        fetchShowsData(false, undefined, true).catch(error => {
-          console.warn('🔍 [useShows] Next batch preload failed:', error)
+        // console.log('🔍 [useShows] Starting next preload after consuming previous batch')
+        fetchShowsData(false, undefined, true).catch(() => {
+          // console.warn('🔍 [useShows] Next batch preload failed:', error)
         })
-      }, 100)
+      }, 500)
       
       return
     }
@@ -339,8 +339,8 @@ export function useShows({
   // Background preloading function
   const preloadNext = useCallback(async () => {
     if (!hasMore || loading || isPreloading || preloadedShows.length > 0) return
-    
-    console.log('🔍 [useShows] Starting background preload')
+
+    // console.log('🔍 [useShows] Starting background preload')
     await fetchShowsData(false, undefined, true)
   }, [hasMore, loading, isPreloading, preloadedShows.length, fetchShowsData])
 
@@ -351,43 +351,43 @@ export function useShows({
 
 
   const handleShowAction = useCallback(async (show: ShowWithGenres, status: ShowStatus) => {
-    console.log('🔄 [useShows] handleShowAction called for:', show.name, 'status:', status, 'view:', view)
-    
+    // console.log('🔄 [useShows] handleShowAction called for:', show.name, 'status:', status, 'view:', view)
+
     if (!user) {
-      console.log('❌ [useShows] No user, cannot update show status')
+      // console.log('❌ [useShows] No user, cannot update show status')
       return
     }
-    
+
     if (loading) {
-      console.log('⏳ [useShows] Already loading, skipping action')
+      // console.log('⏳ [useShows] Already loading, skipping action')
       return
     }
-    
+
     try {
       // Remove show from local state immediately for smooth UX
-      console.log('🔄 [useShows] Removing show locally immediately')
+      // console.log('🔄 [useShows] Removing show locally immediately')
       setShows(prev => prev.filter(s => s.imdb_id !== show.imdb_id))
-      
+
       // Import and call the database update function
       const { updateUserShowStatus } = await import('@/lib/shows')
-      
-      console.log('🔄 [useShows] Updating database for:', show.name)
+
+      // console.log('🔄 [useShows] Updating database for:', show.name)
       const result = await updateUserShowStatus(user.id, show.imdb_id, status)
-      
+
       if (result.error) {
         console.error('❌ [useShows] Database update failed:', result.error)
         return
       }
-      
-      console.log('✅ [useShows] Database updated successfully for:', show.name)
-      
+
+      // console.log('✅ [useShows] Database updated successfully for:', show.name)
+
       // Wait a bit then refresh counters
       setTimeout(async () => {
-        console.log('🔄 [useShows] Delayed counter refresh')
+        // console.log('🔄 [useShows] Delayed counter refresh')
         await refreshCounters()
       }, 1000)
-      
-      console.log('✅ [useShows] handleShowAction completed for:', show.name)
+
+      // console.log('✅ [useShows] handleShowAction completed for:', show.name)
     } catch (error) {
       console.error('❌ [useShows] Error in handleShowAction:', error)
     }
@@ -428,7 +428,7 @@ export function useShows({
   // Separate effect for refresh trigger (skip discover view to prevent flicker)
   useEffect(() => {
     if (user && refreshTrigger > 0 && view !== 'discover') {
-      console.log(`🔄 [useShows] Refreshing ${view} view due to trigger:`, refreshTrigger)
+      // console.log(`🔄 [useShows] Refreshing ${view} view due to trigger:`, refreshTrigger)
       setServerOffset(0)
       fetchShowsData(true)
     }
@@ -437,7 +437,7 @@ export function useShows({
 
   // Handle sort change
   const handleSortChange = useCallback((newSort: SortOption) => {
-    console.log('🔄 [useShows] Sort change requested:', newSort)
+    // console.log('🔄 [useShows] Sort change requested:', newSort)
     setSortBy(newSort)
     setServerOffset(0)
     // Use a slight delay to ensure state updates are processed
