@@ -82,17 +82,19 @@ export function Header() {
                     onMouseLeave={() => setHovered(null)}
                     onFocus={() => setHovered(item.id)}
                     onBlur={() => setHovered(null)}
-                    className={`relative px-2 lg:px-3 py-2 text-[0.68rem] tracking-[0.35em] uppercase font-semibold transition-colors duration-200 ${
+                    className={`relative px-2 lg:px-3 py-2 text-[0.68rem] tracking-[0.35em] uppercase font-semibold transition-all duration-300 ease-out ${
                       isActive || isHover ? 'text-[var(--accent-primary)]' : 'text-white/85 hover:text-white'
                     }`}
                   >
                     <span className="flex items-center gap-2">
                       <span>{item.label}</span>
-                      
+
                     </span>
-                    {(isActive || isHover) && (
-                      <span className="absolute -bottom-3 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full bg-[var(--accent-primary)] shadow-[0_0_18px_rgba(245,180,0,0.6)]"></span>
-                    )}
+                    <span
+                      className={`absolute -bottom-3 left-1/2 h-1 rounded-full bg-[var(--accent-primary)] shadow-[0_0_18px_rgba(245,180,0,0.6)] -translate-x-1/2 transition-all duration-300 ease-out ${
+                        isActive || isHover ? 'w-9 opacity-100' : 'w-0 opacity-0'
+                      }`}
+                    />
                   </button>
                 )
               })}
