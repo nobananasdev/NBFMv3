@@ -11,6 +11,8 @@ import { WatchlistSection } from '../sections/WatchlistSection'
 import { NewSeasonsSection } from '../sections/NewSeasonsSection'
 import { RatedSection } from '../sections/RatedSection'
 import ScrollToTopButton from '../ui/ScrollToTopButton'
+import ErrorBoundary from '../ErrorBoundary'
+import { CompactErrorFallback } from '../ErrorFallback'
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -37,15 +39,35 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const renderSection = () => {
     switch (activeSection) {
       case 'discover':
-        return <DiscoverSection />
+        return (
+          <ErrorBoundary fallback={<CompactErrorFallback />}>
+            <DiscoverSection />
+          </ErrorBoundary>
+        )
       case 'watchlist':
-        return <WatchlistSection />
+        return (
+          <ErrorBoundary fallback={<CompactErrorFallback />}>
+            <WatchlistSection />
+          </ErrorBoundary>
+        )
       case 'new-seasons':
-        return <NewSeasonsSection />
+        return (
+          <ErrorBoundary fallback={<CompactErrorFallback />}>
+            <NewSeasonsSection />
+          </ErrorBoundary>
+        )
       case 'rated':
-        return <RatedSection />
+        return (
+          <ErrorBoundary fallback={<CompactErrorFallback />}>
+            <RatedSection />
+          </ErrorBoundary>
+        )
       default:
-        return <DiscoverSection />
+        return (
+          <ErrorBoundary fallback={<CompactErrorFallback />}>
+            <DiscoverSection />
+          </ErrorBoundary>
+        )
     }
   }
 
