@@ -117,6 +117,10 @@ export default function FilterSidebar({ inline = false }: FilterSidebarProps) {
   const clearStaged = () => {
     setStagedGenres([])
     setStagedStreamers([])
+    // Immediately apply the cleared filters to global state
+    setSelectedGenres([])
+    setSelectedStreamers([])
+    closeFilter()
   }
 
   const isDirty = (() => {

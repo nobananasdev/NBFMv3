@@ -1,12 +1,7 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useFilter } from '@/contexts/FilterContext'
-import { useAuth } from '@/contexts/AuthContext'
-import { quickSearchDatabase } from '@/lib/shows'
-import { highlightText, highlightTextArray } from '@/lib/textHighlight'
-import { ShowStatus } from '@/types/database'
-import { debounce, cachedRequest, generateCacheKey } from '@/lib/rateLimiter'
 
 interface SearchPanelProps {
   isOpen: boolean
@@ -17,29 +12,7 @@ interface SearchPanelProps {
 
 export default function SearchPanel({ isOpen, onClose, onCommit, inline = false }: SearchPanelProps) {
   const { filters } = useFilter()
-  const { user } = useAuth()
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [suggestions, setSuggestions] = useState<Array<{
-    imdb_id: string
-    name: string
-    original_name: string | null
-    creators: string[]
-    main_cast: string[]
-    user_status?: ShowStatus
-  }>>([])
-
-  const controllerRef = useRef<AbortController | null>(null)
-  const mountedRef = useRef(true)
-
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      if (controllerRef.current) controllerRef.current.abort()
-    }
-  }, [])
 
   // Support closing animation for inline mode by delaying unmount
   const [isClosing, setIsClosing] = useState(false)
@@ -56,155 +29,21 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
           setShouldRender(false)
           setIsClosing(false)
           setInput('')
-          setSuggestions([])
-          setLoading(false)
-          setError(null)
         }, 220)
         return () => clearTimeout(t)
       }
     } else {
       if (!isOpen) {
         setInput('')
-        setSuggestions([])
-        setLoading(false)
-        setError(null)
       }
     }
   }, [isOpen, inline, shouldRender])
-
-  // Debounced search function with caching and rate limiting
-  const performSearch = useCallback(async (query: string) => {
-    if (!mountedRef.current) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      if (controllerRef.current) controllerRef.current.abort()
-      controllerRef.current = new AbortController()
-
-      // Generate cache key for this search
-      const cacheKey = generateCacheKey('search', {
-        prefix: query,
-        userId: user?.id || 'anonymous'
-      })
-
-      // Use cached request with 2 minute TTL for search results
-      const result = await cachedRequest(
-        cacheKey,
-        () => quickSearchDatabase({
-          prefix: query,
-          limit: 10,
-          userId: user?.id
-        }),
-        {
-          cacheTTL: 2 * 60 * 1000, // 2 minutes
-          skipQueue: false // Use queue to prevent overwhelming the server
-        }
-      )
-
-      if (!mountedRef.current) return
-      
-      if (result.error) {
-        setError('Failed to load suggestions')
-        setSuggestions([])
-      } else {
-        setSuggestions(result.suggestions)
-      }
-    } catch (err: any) {
-      if (!mountedRef.current) return
-      
-      // Check if it's a rate limit error
-      if (err.message?.includes('Rate limit')) {
-        setError('Too many searches. Please wait a moment.')
-      } else {
-        setError('Failed to load suggestions')
-      }
-      setSuggestions([])
-    } finally {
-      if (mountedRef.current) setLoading(false)
-    }
-  }, [user?.id])
-
-  // Create stable debounced search ref
-  const debouncedSearchRef = useRef<ReturnType<typeof debounce> | null>(null)
-  
-  if (!debouncedSearchRef.current) {
-    debouncedSearchRef.current = debounce((query: string) => {
-      performSearch(query)
-    }, 300)
-  }
-
-  // Trigger search when input changes
-  useEffect(() => {
-    if (!isOpen) return
-
-    const q = input.trim()
-    if (q.length < 3) {
-      setSuggestions([])
-      setError(null)
-      setLoading(false)
-      return
-    }
-
-    // Call debounced search
-    if (debouncedSearchRef.current) {
-      debouncedSearchRef.current(q)
-    }
-  }, [input, isOpen, performSearch])
 
   const handleCommit = () => {
     const q = input.trim()
     if (q.length >= 1) {
       onCommit(q)
       onClose()
-    }
-  }
-
-  // Helper function to get status indicator
-  const getStatusIndicator = (status?: ShowStatus) => {
-    if (!status) return null
-    
-    switch (status) {
-      case 'watchlist':
-        return (
-          <div className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
-            </svg>
-            <span>Watchlist</span>
-          </div>
-        )
-      case 'loved_it':
-        return (
-          <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd"/>
-            </svg>
-            <span>Loved it</span>
-          </div>
-        )
-      case 'liked_it':
-        return (
-          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-            </svg>
-            <span>Liked it</span>
-          </div>
-        )
-      case 'not_for_me':
-        return (
-          <div className="flex items-center gap-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-full">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-            </svg>
-            <span>Not for me</span>
-          </div>
-        )
-      default:
-        return null
     }
   }
 
@@ -247,7 +86,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                     onClose()
                   }
                 }}
-                placeholder="Type 3+ characters to search (name, cast, creator)..."
+                placeholder="Search shows by name, cast, or creator..."
                 className="search-input px-3 py-2 text-sm"
               />
             </div>
@@ -262,75 +101,9 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
             </button>
           </div>
 
-          {/* Suggestions */}
-          <div className="min-h-[60px]">
-            {input.trim().length < 3 && (
-              <div className="text-sm text-gray-500">Type 3+ characters to search across all shows</div>
-            )}
-
-            {input.trim().length >= 3 && loading && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                Loading suggestions...
-              </div>
-            )}
-
-            {input.trim().length >= 3 && !loading && error && (
-              <div className="text-sm text-red-600">{error}</div>
-            )}
-
-            {input.trim().length >= 3 && !loading && !error && suggestions.length === 0 && (
-              <div className="text-sm text-gray-500">No suggestions</div>
-            )}
-
-            {suggestions.length > 0 && (
-              <ul className="divide-y divide-transparent rounded-[12px] sm:rounded-[16px] border border-[var(--border-primary)] overflow-hidden glass">
-                {suggestions.map((sug) => {
-                  const primary = sug.name || sug.original_name || 'Untitled'
-                  const searchTerm = input.trim()
-
-                  return (
-                    <li key={sug.imdb_id}>
-                      <button
-                        onClick={() => {
-                          onCommit(primary, sug.imdb_id)
-                          onClose()
-                        }}
-                        className="search-suggestion"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-white text-[14px]">
-                              {highlightText(primary, searchTerm, 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                            </div>
-                            <div className="text-[12px] text-[var(--text-secondary)] mt-0.5">
-                              {sug.creators && sug.creators.length > 0 && (
-                                <span>
-                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                                </span>
-                              )}
-                              {sug.creators && sug.creators.length > 0 && sug.main_cast && sug.main_cast.length > 0 && (
-                                <span className="text-gray-400"> • </span>
-                              )}
-                              {sug.main_cast && sug.main_cast.length > 0 && (
-                                <span>
-                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {sug.user_status && (
-                            <div className="flex-shrink-0">
-                              {getStatusIndicator(sug.user_status)}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+          {/* Info text */}
+          <div className="text-sm text-gray-500">
+            Press Enter or click Search to find shows
           </div>
         </div>
       </div>
@@ -377,7 +150,7 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
                     onClose()
                   }
                 }}
-                placeholder="Type 3+ characters to search (name, cast, creator)..."
+                placeholder="Search shows by name, cast, or creator..."
                 className="search-input"
               />
             </div>
@@ -392,75 +165,9 @@ export default function SearchPanel({ isOpen, onClose, onCommit, inline = false 
             </button>
           </div>
 
-          {/* Suggestions */}
-          <div className="min-h-[84px]">
-            {input.trim().length < 3 && (
-              <div className="text-sm text-gray-500">Type 3+ characters to search across all shows</div>
-            )}
-
-            {input.trim().length >= 3 && loading && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                Loading suggestions...
-              </div>
-            )}
-
-            {input.trim().length >= 3 && !loading && error && (
-              <div className="text-sm text-red-600">{error}</div>
-            )}
-
-            {input.trim().length >= 3 && !loading && !error && suggestions.length === 0 && (
-              <div className="text-sm text-gray-500">No suggestions</div>
-            )}
-
-            {suggestions.length > 0 && (
-              <ul className="divide-y divide-transparent rounded-xl border border-[var(--border-primary)] overflow-hidden glass">
-                {suggestions.map((sug) => {
-                  const primary = sug.name || sug.original_name || 'Untitled'
-                  const searchTerm = input.trim()
-
-                  return (
-                    <li key={sug.imdb_id}>
-                      <button
-                        onClick={() => {
-                          onCommit(primary, sug.imdb_id)
-                          onClose()
-                        }}
-                        className="search-suggestion"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-white">
-                              {highlightText(primary, searchTerm, 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                            </div>
-                            <div className="text-[13px] text-[var(--text-secondary)] mt-0.5">
-                              {sug.creators && sug.creators.length > 0 && (
-                                <span>
-                                  Creator: {highlightTextArray(sug.creators.slice(0, 2), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                                </span>
-                              )}
-                              {sug.creators && sug.creators.length > 0 && sug.main_cast && sug.main_cast.length > 0 && (
-                                <span className="text-gray-400"> • </span>
-                              )}
-                              {sug.main_cast && sug.main_cast.length > 0 && (
-                                <span>
-                                  Cast: {highlightTextArray(sug.main_cast.slice(0, 3), searchTerm, ', ', 'bg-yellow-300 text-gray-900 px-1 py-0.5 rounded font-semibold')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {sug.user_status && (
-                            <div className="flex-shrink-0">
-                              {getStatusIndicator(sug.user_status)}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+          {/* Info text */}
+          <div className="text-sm text-gray-500">
+            Press Enter or click Search to find shows
           </div>
         </div>
       </div>

@@ -1666,10 +1666,7 @@ async function quickSearchDatabaseInternal(params: {
       }
     }
 
-    // Use a smarter search strategy: try multiple approaches to find matches
-    const searchTerm = q.toLowerCase()
-    
-    console.log(`🔍 [quickSearchDatabase] Using smart search strategy for: "${q}"`)
+    console.log(`🔍 [quickSearchDatabase] Quick search for: "${q}"`)
     
     // Build query filters for year range
     let queryParams = []
@@ -1681,46 +1678,21 @@ async function quickSearchDatabaseInternal(params: {
     
     const queryString = queryParams.length > 0 ? '&' + queryParams.join('&') : ''
     
-    // Strategy 1: Try direct database search using ilike for exact matches first
-    console.log(`🔍 [quickSearchDatabase] Strategy 1: Direct database search for "${q}"`)
-    const directSearchUrl = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,streamers,main_cast,creators&or=(name.ilike.*${encodeURIComponent(q)}*,original_name.ilike.*${encodeURIComponent(q)}*)&limit=50${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
+    // OPTIMIZED: Use database ilike search with smaller limit for faster results
+    // This leverages database indexes and is much faster than fetching 1000+ rows
+    console.log(`🔍 [quickSearchDatabase] Using optimized database search`)
+    const searchLimit = 100 // Reduced from 1000 to 100 for much faster queries
+    const searchUrl = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,streamers,main_cast,creators&or=(name.ilike.*${encodeURIComponent(q)}*,original_name.ilike.*${encodeURIComponent(q)}*)&limit=${searchLimit}${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
     
-    let directMatches = []
-    try {
-      const directResponse = await fetch(directSearchUrl, { method: 'GET', headers })
-      if (directResponse.ok) {
-        directMatches = await directResponse.json()
-        console.log(`🔍 [quickSearchDatabase] Strategy 1 found ${directMatches.length} direct matches`)
-      }
-    } catch (error) {
-      console.warn('⚠️ [quickSearchDatabase] Strategy 1 failed:', error)
+    const response = await fetch(searchUrl, { method: 'GET', headers })
+    
+    if (!response.ok) {
+      console.error('❌ [quickSearchDatabase] Database query failed:', response.status)
+      return { suggestions: [], error: new Error(`Database query failed: ${response.status}`) }
     }
-    
-    // Strategy 2: If we have enough direct matches, use them; otherwise fetch more shows for client-side search
-    let allShows = directMatches
-    
-    if (directMatches.length < 5) {
-      console.log(`🔍 [quickSearchDatabase] Strategy 2: Fetching more shows for client-side search`)
-      const fallbackLimit = 1000 // Increased from 200 to 1000 for better coverage
-      const fallbackUrl = `${supabaseUrl}/rest/v1/shows?select=imdb_id,id,name,original_name,first_air_date,imdb_rating,imdb_vote_count,vote_average,vote_count,our_score,overview,poster_url,poster_thumb_url,genre_ids,number_of_seasons,number_of_episodes,type,streaming_info,streamers,main_cast,creators&limit=${fallbackLimit}&offset=0${queryString}&order=our_score.desc.nullslast,imdb_rating.desc.nullslast`
-      
-      const fallbackResponse = await fetch(fallbackUrl, { method: 'GET', headers })
-      
-      if (!fallbackResponse.ok) {
-        console.error('❌ [quickSearchDatabase] Fallback database query failed:', fallbackResponse.status)
-        return { suggestions: [], error: new Error(`Database query failed: ${fallbackResponse.status}`) }
-      }
 
-      const fallbackShows = await fallbackResponse.json()
-      console.log(`🔍 [quickSearchDatabase] Strategy 2 fetched ${fallbackShows.length} shows for client-side search`)
-      
-      // Combine direct matches with fallback shows, removing duplicates
-      const seenIds = new Set(directMatches.map((show: any) => show.imdb_id))
-      const uniqueFallbackShows = fallbackShows.filter((show: any) => !seenIds.has(show.imdb_id))
-      allShows = [...directMatches, ...uniqueFallbackShows]
-    }
-    
-    console.log(`🔍 [quickSearchDatabase] Total shows to search: ${allShows.length}`)
+    let allShows = await response.json()
+    console.log(`🔍 [quickSearchDatabase] Database returned ${allShows.length} shows`)
     
     // Apply genre filtering if specified
     if (params.genreIds && params.genreIds.length > 0) {
@@ -1765,15 +1737,16 @@ async function quickSearchDatabaseInternal(params: {
       console.log(`🔍 [quickSearchDatabase] After streaming filter: ${beforeCount} -> ${allShows.length}`)
     }
     
-    // Client-side search with scoring
+    // Client-side search with scoring for better relevance
+    // Database ilike gives us candidates, now we rank them by relevance
     const searchResults = allShows
       .map((show: any) => {
         const score = scoreShowAgainstQuery(show, q)
         return { show, score }
       })
       .filter((item: { show: any; score: number }) => item.score > 0)
-      .sort((a: { show: any; score: number }, b: { show: any; score: number }) => b.score - a.score) // Sort by relevance score
-      .slice(0, params.limit || 10) // Take top results
+      .sort((a: { show: any; score: number }, b: { show: any; score: number }) => b.score - a.score)
+      .slice(0, params.limit || 10)
       .map((item: { show: any; score: number }) => item.show)
     
     console.log(`🔍 [quickSearchDatabase] Found ${searchResults.length} matching shows`)
