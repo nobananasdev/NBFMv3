@@ -33,6 +33,16 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//tluyjrjdwtskuconslaj.supabase.co" />
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="//image.tmdb.org" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Prevent MetaMask auto-connect
+              if (typeof window !== 'undefined') {
+                window.ethereum = undefined;
+              }
+            `
+          }}
+        />
       </head>
       <body>
         <ErrorBoundary>
