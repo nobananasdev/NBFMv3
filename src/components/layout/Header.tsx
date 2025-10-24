@@ -83,7 +83,7 @@ export function Header() {
                     onFocus={() => setHovered(item.id)}
                     onBlur={() => setHovered(null)}
                     className={`relative px-2 lg:px-3 py-2 text-[0.68rem] tracking-[0.35em] uppercase font-semibold transition-colors duration-200 ${
-                      isActive || isHover ? 'text-[var(--accent-primary)]' : 'text-white/60 hover:text-white'
+                      isActive || isHover ? 'text-[var(--accent-primary)]' : 'text-white/85 hover:text-white'
                     }`}
                   >
                     <span className="flex items-center gap-2">

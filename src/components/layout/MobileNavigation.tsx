@@ -67,7 +67,7 @@ export default function MobileNavigation() {
         {/* Text */}
         <span
           className={`text-xs font-bold tracking-[0.2em] transition-all duration-300 uppercase ${
-            isActive ? 'text-[#F5A623]' : 'text-white/60 group-hover:text-white/80'
+            isActive ? 'text-[#F5A623]' : 'text-white/85 group-hover:text-white'
           }`}
         >
           {item.label}

@@ -496,7 +496,7 @@ function ShowCardComponent({
         <div className={`flex-1 flex flex-col justify-between text-center lg:text-left ${contentMinHeight}`}>
           <div className={`flex h-full flex-col ${contentGap}`}>
             <div>
-              <h3 className="text-xl sm:text-[28px] lg:text-[30px] font-black uppercase tracking-[0.12em] leading-tight text-[var(--accent-primary)]">
+              <h3 className="text-xl sm:text-[28px] lg:text-[30px] font-black uppercase tracking-[0.12em] leading-tight text-[var(--accent-primary)] lg:pr-20">
                 {searchQuery ? highlightText(show.name, searchQuery, 'px-1 rounded bg-[var(--accent-primary)] text-black font-black') : show.name}
               </h3>
               {metaParts.length > 0 && (
