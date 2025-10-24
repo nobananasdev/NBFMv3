@@ -427,7 +427,7 @@ function ShowCardComponent({
               }`}
             >
               {blurDataURL ? (
-                <img src={blurDataURL} alt="" className="w-full h-full object-cover blur-sm rounded-3xl" />
+                <Image src={blurDataURL} alt="" fill className="object-cover blur-sm rounded-3xl" unoptimized />
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-3xl" />
               )}
