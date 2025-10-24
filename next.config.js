@@ -22,14 +22,18 @@ const nextConfig = {
     ],
     // Serve modern formats when supported (AVIF first for best compression)
     formats: ['image/avif', 'image/webp'],
-    // Device sizes for responsive images
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    // Image sizes for different use cases
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // Cache optimized images for 24 hours
-    minimumCacheTTL: 86400,
+    // Device sizes for responsive images (optimized for show cards)
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    // Image sizes for different use cases (optimized for posters)
+    imageSizes: [16, 32, 48, 64, 96, 128, 160, 180, 220, 256],
+    // Cache optimized images for 7 days (longer cache for better performance)
+    minimumCacheTTL: 604800,
     // Unoptimized false to use Next.js optimization
     unoptimized: false,
+    // Disable image optimization in development for faster reload
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Enable gzip compression
   compress: true,
@@ -48,7 +52,18 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
+            // 7 days cache, 30 days stale-while-revalidate
+            value: 'public, max-age=604800, stale-while-revalidate=2592000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/public/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            // Static assets cached for 1 year
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

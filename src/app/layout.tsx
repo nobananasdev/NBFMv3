@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { MainLayout } from '@/components/layout/MainLayout'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { QueryProvider } from '@/components/providers/QueryProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -35,13 +36,15 @@ export default function RootLayout({
       </head>
       <body>
         <ErrorBoundary>
-          <AuthProvider>
-            <NavigationProvider>
-              <MainLayout>
-                {children}
-              </MainLayout>
-            </NavigationProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <NavigationProvider>
+                <MainLayout>
+                  {children}
+                </MainLayout>
+              </NavigationProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ErrorBoundary>
       </body>
     </html>

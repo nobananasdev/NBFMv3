@@ -441,11 +441,12 @@ function ShowCardComponent({
                 src={optimizedUrl}
                 alt={show.name}
                 fill
-                className={`crisp-image object-cover transition-all duration-500 rounded-3xl ${imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
-                sizes="(max-width: 640px) 160px, (max-width: 1024px) 180px, 220px"
-                quality={90}
+                className={`crisp-image object-cover transition-all duration-300 rounded-3xl ${imageLoaded || isPreloaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
+                sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 200px"
+                quality={85}
                 priority={priority}
-                fetchPriority={priority ? 'high' : 'auto'}
+                loading={priority ? 'eager' : 'lazy'}
+                fetchPriority={priority ? 'high' : 'low'}
                 placeholder={blurDataURL ? 'blur' : 'empty'}
                 blurDataURL={blurDataURL}
                 onLoad={() => {
