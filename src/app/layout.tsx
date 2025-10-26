@@ -27,17 +27,43 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-2NN8T08NC3"></script>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Block MetaMask extension from auto-connecting
-              Object.defineProperty(window, 'ethereum', {
-                get: function() { return undefined; },
-                set: function() { },
-                configurable: false
-              });
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-2NN8T08NC3');
+            `
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Suppress MetaMask and Web3 wallet errors
+              (function() {
+                try {
+                  // Override console.error to filter out wallet-related errors
+                  const originalError = console.error;
+                  console.error = function(...args) {
+                    const msg = String(args[0] || '');
+                    // Suppress MetaMask and wallet connection errors
+                    if (msg.includes('MetaMask') ||
+                        msg.includes('Failed to connect') ||
+                        msg.includes('ethereum') ||
+                        msg.includes('web3')) {
+                      return; // Silently ignore these errors
+                    }
+                    originalError.apply(console, args);
+                  };
+                } catch(e) {
+                  // If error suppression fails, continue normally
+                }
+              })();
             `
           }}
         />
@@ -46,7 +72,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="//image.tmdb.org" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <ErrorBoundary>
           <AuthProvider>
             <NavigationProvider>
