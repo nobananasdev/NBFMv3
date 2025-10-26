@@ -83,7 +83,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           .from('user_shows')
           .select(`
             imdb_id,
-            shows:imdb_id (next_season_date)
+            shows!inner (next_season_date)
           `)
           .eq('user_id', user.id)
           .in('status', ['liked_it', 'loved_it'])
@@ -92,8 +92,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       const currentDate = new Date()
       const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
 
-      const newSeasonsCount = userLikedShows.data?.filter(us => {
-        const show = us.shows as any
+      const newSeasonsCount = userLikedShows.data?.filter((us: any) => {
+        const show = us.shows
         if (!show?.next_season_date) return false
         const nextSeasonDate = new Date(show.next_season_date)
         return nextSeasonDate > sixMonthsAgo

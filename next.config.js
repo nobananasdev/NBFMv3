@@ -37,8 +37,6 @@ const nextConfig = {
   },
   // Enable gzip compression
   compress: true,
-  // Use SWC for faster minification
-  swcMinify: true,
   // Enable experimental features for better performance
   experimental: {
     // Enable modern bundling
