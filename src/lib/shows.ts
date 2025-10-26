@@ -111,8 +111,13 @@ export async function fetchShows(options: {
     // Build the base query with filters
     let queryParams = []
     
-    // Discovery filter
-    if (options.showInDiscovery) {
+    // Discovery filter - only apply if no other filters are active
+    // When user applies filters, they want to see ALL matching content, not just discovery
+    const hasUserFilters = (options.genreIds && options.genreIds.length > 0) ||
+                          (options.streamerIds && options.streamerIds.length > 0) ||
+                          (options.yearRange && !(options.yearRange[0] === 1950 && options.yearRange[1] === 2025))
+    
+    if (options.showInDiscovery && !hasUserFilters) {
       queryParams.push('show_in_discovery=eq.true')
     }
     

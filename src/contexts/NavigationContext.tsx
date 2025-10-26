@@ -92,7 +92,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       const currentDate = new Date()
       const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
 
-      const newSeasonsCount = userLikedShows.data?.filter((us: any) => {
+      const newSeasonsCount = userLikedShows.data?.filter((us: { shows: { next_season_date: string | null } | null }) => {
         const show = us.shows
         if (!show?.next_season_date) return false
         const nextSeasonDate = new Date(show.next_season_date)
