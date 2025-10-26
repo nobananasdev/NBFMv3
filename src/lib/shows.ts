@@ -504,8 +504,8 @@ export async function fetchUserShows(
       return { shows: [], error: userShowsError }
     }
 
-    let shows = userShows?.map(us => {
-      const show = us.shows as any
+    let shows = userShows?.map((us: any) => {
+      const show = us.shows
       return {
         ...show,
         // Add required fields as fallbacks
@@ -1092,8 +1092,8 @@ export async function fetchNewSeasonsShows(
     const sixMonthsAgo = new Date(currentDate.getTime() - (6 * 30 * 24 * 60 * 60 * 1000))
 
     const shows = userShows
-      .map(us => {
-        const show = us.shows as any
+      .map((us: any) => {
+        const show = us.shows
         return {
           ...show,
           // Add required fields as fallbacks
